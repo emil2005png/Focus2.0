@@ -11,9 +11,16 @@ import 'package:focus_app/screens/email_verification_screen.dart';
 import 'package:focus_app/screens/splash_screen.dart';
 import 'package:focus_app/widgets/auth_gate.dart';
 
+import 'package:focus_app/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // Initialize Notifications
+  final notificationService = NotificationService();
+  await notificationService.init();
+
   runApp(const FocusApp());
 }
 

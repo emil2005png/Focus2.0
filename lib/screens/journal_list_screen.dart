@@ -13,156 +13,182 @@ class JournalListScreen extends StatelessWidget {
     final firestoreService = FirestoreService();
 
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Light paper-like background
-      body: StreamBuilder<QuerySnapshot>(
-        stream: firestoreService.getJournals(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+      backgroundColor: Colors.grey[50], // Light paper-like background
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text('Journal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black87)),
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            centerTitle: false,
+            floating: true,
+            pinned: true,
+            actions: [
+               IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: Colors.black54)),
+            ],
+          ),
+          StreamBuilder<QuerySnapshot>(
+            stream: firestoreService.getJournals(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return SliverFillRemaining(child: Center(child: Text('Error: ${snapshot.error}')));
+              }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                 return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+              }
 
-          final docs = snapshot.data?.docs ?? [];
+              final docs = snapshot.data?.docs ?? [];
 
-          if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   Icon(Icons.book, size: 64, color: Colors.grey[400]),
-                   const SizedBox(height: 16),
-                   Text(
-                    'No journal entries yet.\nStart writing your story!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final date = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-              final formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(date);
-
-              return Dismissible(
-                key: Key(doc.id),
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) {
-                  firestoreService.deleteJournal(doc.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Entry deleted')),
-                  );
-                },
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => JournalEntryScreen(entry: doc),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
+              if (docs.isEmpty) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.book, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No journal entries yet.\nStart writing your story!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
                         ),
                       ],
-                      border: Border(
-                        left: BorderSide(
-                          color: Theme.of(context).primaryColor,
-                          width: 4,
-                        ),
-                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                data['title'] ?? 'Untitled',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                  ),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Bottom padding for floating nav
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final date = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+                      final formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(date);
+
+                      return Dismissible(
+                        key: Key(doc.id),
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (direction) {
+                          firestoreService.deleteJournal(doc.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Entry deleted')),
+                          );
+                        },
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => JournalEntryScreen(entry: doc),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ],
+                              border: Border(
+                                left: BorderSide(
+                                  color: Theme.of(context).primaryColor,
+                                  width: 4,
+                                ),
                               ),
                             ),
-                            if (data['mood'] != null)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Text(
-                                  data['mood'], 
-                                  style: const TextStyle(fontSize: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        data['title'] ?? 'Untitled',
+                                        style: GoogleFonts.outfit( // Updated font
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (data['mood'] != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 8.0),
+                                        child: Text(
+                                          data['mood'], 
+                                          style: const TextStyle(fontSize: 20),
+                                        ),
+                                      ),
+                                    Icon(Icons.edit, size: 16, color: Colors.grey[400]),
+                                  ],
                                 ),
-                              ),
-                            Icon(Icons.edit, size: 16, color: Colors.grey[400]),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formattedDate,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                            fontStyle: FontStyle.italic,
+                                const SizedBox(height: 4),
+                                Text(
+                                  formattedDate,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                                const Divider(height: 20),
+                                Text(
+                                  data['content'] ?? '',
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.merriweather( // Serif for content
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const Divider(height: 20),
-                        Text(
-                          data['content'] ?? '',
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.patrickHand( // Handwritten style
-                            fontSize: 16,
-                            color: Colors.black87,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
+                    childCount: docs.length,
                   ),
                 ),
               );
             },
-          );
-        },
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const JournalEntryScreen()),
-          );
-        },
-        label: const Text('New Entry'),
-        icon: const Icon(Icons.create),
+      floatingActionButton: Padding( // Adjust FAB position
+        padding: const EdgeInsets.only(bottom: 80),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const JournalEntryScreen()),
+            );
+          },
+          label: const Text('New Entry'),
+          icon: const Icon(Icons.create),
+          backgroundColor: Colors.black87,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }

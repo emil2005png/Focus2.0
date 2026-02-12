@@ -7,8 +7,31 @@ import 'package:focus_app/screens/login_screen.dart';
 import 'package:focus_app/screens/mood_checkin_screen.dart';
 import 'package:focus_app/screens/email_verification_screen.dart';
 
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+import 'package:focus_app/screens/inspirational_message_screen.dart';
+import 'package:focus_app/screens/mini_focus_game_screen.dart';
+
+class AuthGate extends StatefulWidget {
+  final bool initialInspirationShown;
+  const AuthGate({super.key, this.initialInspirationShown = false});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late bool _hasShownInspiration;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasShownInspiration = widget.initialInspirationShown;
+  }
+
+  Future<Map<String, bool>> _checkDailyProgress() async {
+     final mood = await FirestoreService().hasCheckedInToday();
+     final game = await FirestoreService().hasPlayedMiniGameToday();
+     return {'mood': mood, 'game': game};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,24 +45,38 @@ class AuthGate extends StatelessWidget {
         if (snapshot.hasData) {
           final user = snapshot.data;
           
+          // 1. Check Verification
           if (user != null && !user.emailVerified) {
             return const EmailVerificationScreen();
           }
 
-          // User is logged in and verified, check if they have done mood check-in today
-          return FutureBuilder<bool>(
-            future: FirestoreService().hasCheckedInToday(),
+          // 2. Inspiration Message (Once per session loop)
+          if (!_hasShownInspiration) {
+             return InspirationalMessageScreen(
+               onDone: () {
+                 if (mounted) setState(() => _hasShownInspiration = true);
+               }
+             );
+          }
+
+          // 3. User is logged in and verified, check progress
+          return FutureBuilder<Map<String, bool>>(
+            future: _checkDailyProgress(),
             builder: (context, checkInSnapshot) {
               if (checkInSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
 
-              final hasCheckedIn = checkInSnapshot.data ?? false;
+              final data = checkInSnapshot.data ?? {'mood': false, 'game': false};
+              final moodDone = data['mood']!;
+              final gameDone = data['game']!;
               
-              if (hasCheckedIn) {
-                return const HomeScreen();
-              } else {
+              if (!moodDone) {
                 return const MoodCheckInScreen();
+              } else if (!gameDone) {
+                return const MiniFocusGameScreen();
+              } else {
+                return const HomeScreen();
               }
             },
           );

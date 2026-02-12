@@ -135,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 100), // Added bottom padding
         child: Form(
           key: _formKey,
           child: Column(
@@ -305,6 +305,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: _isLoading
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text('Save Changes'),
+                  ),
+                ),
+
+              const SizedBox(height: 32),
+              
+              // Logout Button
+              if (!_isEditing)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await _authService.signOut();
+                      // Navigation handled by auth state stream in main.dart
+                    },
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    label: const Text('Logout', style: TextStyle(color: Colors.red)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
             ],

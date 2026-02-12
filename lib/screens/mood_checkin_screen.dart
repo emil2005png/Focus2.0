@@ -40,15 +40,11 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
         note: _noteController.text.trim(),
       );
       
-        // Show motivational quote full screen
-        final random = Random();
-        final quote = motivationalQuotes[random.nextInt(motivationalQuotes.length)];
-        
         if (mounted) {
            Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => QuoteScreen(quote: quote),
+              builder: (context) => const AuthGate(initialInspirationShown: true),
             ),
           );
         }

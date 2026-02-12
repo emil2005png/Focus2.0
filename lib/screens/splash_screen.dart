@@ -13,10 +13,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  
+  // Distinct quotes for Splash Screen (Short & Punchy)
+  final List<String> _splashQuotes = [
+    "Focus is not about doing more.\nIt is about doing less, better.",
+    "One thing at a time.",
+    "Starve your distractions,\nfeed your focus.",
+    "Clarity precedes success.",
+    "Make today count."
+  ];
+  late String _displayQuote;
 
   @override
   void initState() {
     super.initState();
+    _displayQuote = _splashQuotes[DateTime.now().millisecond % _splashQuotes.length];
+    
     _controller = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -38,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
 
     // Navigate to AuthGate after 3 seconds
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
@@ -86,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: Text(
-                  '"Focus is not about doing more.\nIt is about doing less, better."',
+                  _displayQuote,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontStyle: FontStyle.italic,

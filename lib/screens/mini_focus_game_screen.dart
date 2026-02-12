@@ -71,16 +71,16 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
     
     // Optional: Add haptic feedback here if using 'flutter/services.dart' HapticFeedback.vibrate();
 
-    // Save Focus Stats
-    // Assuming 1 minute credit even for 10s game for gamification, or proportional
-    FirestoreService().updateFocusStats(1); 
+    // Save Focus Stats & Record Game
+    // Assuming 1 minute credit even for 10s game for gamification
+    FirestoreService().recordMiniGamePlayed(1); 
 
     // Navigate to AuthGate
     Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
             Navigator.of(context).pushReplacement(
                 PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(),
+                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
                     },

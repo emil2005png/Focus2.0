@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:focus_app/screens/journal_entry_screen.dart'; // To link reflection to journal
+import 'package:google_fonts/google_fonts.dart';
 
 class ReflectionScreen extends StatefulWidget {
   const ReflectionScreen({super.key});
@@ -45,59 +46,61 @@ class _ReflectionScreenState extends State<ReflectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.lightbulb_circle, size: 80, color: Colors.amber),
-              const SizedBox(height: 24),
-              const Text(
-                'Daily Reflection',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  _currentPrompt,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontStyle: FontStyle.italic,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lightbulb_circle, size: 80, color: Colors.amber),
+                const SizedBox(height: 24),
+                const Text(
+                  'Daily Reflection',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 48),
-              FilledButton.icon(
-                onPressed: _reflectOnThis,
-                icon: const Icon(Icons.edit),
-                label: const Text('Reflect on this'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    _currentPrompt,
+                    style: GoogleFonts.merriweather( // Serif for prompt
+                      fontSize: 20,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _generateNewPrompt,
-                child: const Text('New Prompt'),
-              ),
-            ],
+                const SizedBox(height: 48),
+                FilledButton.icon(
+                  onPressed: _reflectOnThis,
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Reflect on this'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _generateNewPrompt,
+                  child: const Text('New Prompt'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
