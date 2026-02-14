@@ -1,8 +1,12 @@
+```
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_app/models/mood_entry.dart';
+import 'package:focus_app/models/distraction_model.dart';
+import 'package:focus_app/models/daily_plan.dart';
+import 'package:uuid/uuid.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/models/daily_health_log.dart';
 // import 'package:focus_app/models/journal_entry.dart';

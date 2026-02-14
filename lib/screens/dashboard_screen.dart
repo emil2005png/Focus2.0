@@ -25,6 +25,7 @@ import 'package:focus_app/screens/reflection_screen.dart';
 import 'package:focus_app/widgets/fade_in_animation.dart';
 import 'package:focus_app/widgets/glass_container.dart';
 import 'package:focus_app/widgets/bouncy_button.dart';
+import 'package:focus_app/widgets/daily_planning_widget.dart';
 import 'package:focus_app/theme/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -140,6 +141,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       }
                       return const SizedBox.shrink();
                     },
+                  ),
+
+                  // Daily Planning Widget
+                  FadeInAnimation(
+                    delay: step * 2,
+                    duration: duration,
+                    child: Column(
+                      children: const [
+                        DailyPlanningWidget(),
+                        SizedBox(height: 24),
+                      ],
+                    ),
                   ),
 
                   // Tracker Card (New Entry Point)
