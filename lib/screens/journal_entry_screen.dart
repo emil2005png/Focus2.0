@@ -4,8 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final DocumentSnapshot? entry; // If null, creating new. If provided, editing.
+  final String? initialContent;
 
-  const JournalEntryScreen({super.key, this.entry});
+  const JournalEntryScreen({super.key, this.entry, this.initialContent});
 
   @override
   State<JournalEntryScreen> createState() => _JournalEntryScreenState();
@@ -28,6 +29,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       _titleController.text = data['title'] ?? '';
       _contentController.text = data['content'] ?? '';
       _selectedMood = data['mood'];
+    } else if (widget.initialContent != null) {
+        _contentController.text = widget.initialContent!;
     }
   }
 

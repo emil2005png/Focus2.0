@@ -64,6 +64,57 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email to receive a password reset link.'),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: emailController,
+              labelText: 'Email',
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isNotEmpty) {
+                 Navigator.pop(context); // Close dialog first
+                 try {
+                     await AuthService().sendPasswordResetEmail(email);
+                     if (mounted) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(content: Text('Password reset email sent!'), backgroundColor: Colors.green)
+                         );
+                     }
+                 } catch (e) {
+                     if (mounted) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red)
+                         );
+                     }
+                 }
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,6 +170,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                         _showForgotPasswordDialog();
+                      },
+                      child: const Text('Forgot Password?'),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   FilledButton(

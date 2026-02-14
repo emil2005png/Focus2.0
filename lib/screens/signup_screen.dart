@@ -54,14 +54,20 @@ class _SignupScreenState extends State<SignupScreen> {
           password: password,
         );
 
-        // Create User Profile in Firestore
-        if (userCredential.user != null) {
-          await FirestoreService().createUserProfile(
-            uid: userCredential.user!.uid,
-            email: email,
-            username: username,
-            fullName: name,
-          );
+        try {
+          // Create User Profile in Firestore
+          if (userCredential.user != null) {
+            await FirestoreService().createUserProfile(
+              uid: userCredential.user!.uid,
+              email: email,
+              username: username,
+              fullName: name,
+            );
+          }
+        } catch (e) {
+          // If profile creation fails, sign out the user so they are not left in a partial state
+          await AuthService().signOut();
+          throw Exception('Failed to create user profile. Please try again.');
         }
 
         if (mounted) {

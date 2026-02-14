@@ -63,20 +63,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _uploadImage() async {
-    // Temporarily disabled due to storage config issues
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Coming Soon'),
-        content: const Text('Profile picture upload will arrive in the next update!'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512, imageQuality: 75);
+      
+      if (image == null) return;
+
+      setState(() => _isLoading = true);
+
+      // Upload via service
+      final downloadUrl = await _firestoreService.uploadProfileImage(File(image.path));
+
+      if (mounted) {
+        setState(() {
+          _photoUrl = downloadUrl;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload image: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _saveProfile() async {

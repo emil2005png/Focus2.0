@@ -50,4 +50,8 @@ class AuthService {
   Future<void> reloadUser() async {
     await _auth.currentUser?.reload();
   }
+  // Send Password Reset Email
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
 }
