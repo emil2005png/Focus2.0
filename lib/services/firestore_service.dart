@@ -3,6 +3,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_app/models/mood_entry.dart';
+import 'package:focus_app/models/distraction_model.dart';
+import 'package:focus_app/models/daily_plan.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/models/daily_health_log.dart';
 // import 'package:focus_app/models/journal_entry.dart';
@@ -59,8 +61,14 @@ class FirestoreService {
 
   // Add a mood entry
   Future<void> addMood({required int moodIndex, String? note}) async {
+    // Map mood index to emoji
+    final List<String> emojis = ['😊', '🤩', '😌', '😔', '😰', '😴'];
+    final List<String> moods = ['Happy', 'Excited', 'Calm', 'Sad', 'Anxious', 'Tired'];
+    
     await _moodsCollection.add({
       'moodIndex': moodIndex,
+      'mood': emojis[moodIndex], // Save emoji for display
+      'moodName': moods[moodIndex], // Save name for reference
       'note': note,
       'timestamp': FieldValue.serverTimestamp(),
       'date': DateTime.now().toIso8601String().split('T')[0], // For easy querying by date
@@ -340,7 +348,16 @@ class FirestoreService {
        
        if (snapshot.docs.isNotEmpty) {
          final data = snapshot.docs.first.data() as Map<String, dynamic>;
-         return data['mood'] as String?;
+         // Try to get mood emoji, fallback to moodName or convert from index
+         if (data.containsKey('mood')) {
+           return data['mood'] as String?;
+         } else if (data.containsKey('moodName')) {
+           return data['moodName'] as String?;
+         } else if (data.containsKey('moodIndex')) {
+           final List<String> moods = ['Happy', 'Excited', 'Calm', 'Sad', 'Anxious', 'Tired'];
+           int index = data['moodIndex'] as int;
+           return moods[index];
+         }
        }
        return null;
     } catch (e) {
@@ -579,6 +596,75 @@ class FirestoreService {
         'screenTimeHours': screenTimeHours,
       });
     }
+  }
+  // --- Daily Plan Methods ---
+
+  Stream<DailyPlan?> getDailyPlanStream(DateTime date) {
+    if (_userId == null) return Stream.value(null);
+
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    return _db
+        .collection('users')
+        .doc(_userId)
+        .collection('daily_plans')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return DailyPlan.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    });
+  }
+
+  Future<void> saveDailyPlan(DailyPlan plan) async {
+    if (_userId == null) return;
+
+    final planRef = _db
+        .collection('users')
+        .doc(_userId)
+        .collection('daily_plans');
+
+    if (plan.id.isEmpty || plan.id == 'new') {
+      // Create new
+      // Firestore generates ID automatically with add()
+      // We don't necessarily need to set the ID in the document data if we rely on doc.id
+      // but let's keep it clean.
+      await planRef.add(plan.toFirestore());
+    } else {
+      // Update existing
+      await planRef.doc(plan.id).update(plan.toFirestore());
+    }
+  }
+
+  Future<void> updateDailyPlanTask(String planId, int taskIndex, bool isCompleted) async {
+    if (_userId == null) return;
+
+    final docRef = _db
+        .collection('users')
+        .doc(_userId)
+        .collection('daily_plans')
+        .doc(planId);
+    
+    return _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) return;
+
+      final data = snapshot.data() as Map<String, dynamic>;
+      List<dynamic> tasks = List.from(data['tasks'] ?? []);
+      
+      if (taskIndex >= 0 && taskIndex < tasks.length) {
+         Map<String, dynamic> task = Map.from(tasks[taskIndex]);
+         task['isCompleted'] = isCompleted;
+         tasks[taskIndex] = task;
+         
+         transaction.update(docRef, {'tasks': tasks});
+      }
+    });
   }
 }
 

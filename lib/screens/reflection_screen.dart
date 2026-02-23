@@ -39,7 +39,9 @@ class _ReflectionScreenState extends State<ReflectionScreen> {
     // Navigate to Journal Entry with pre-filled content (optional) or just context
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const JournalEntryScreen()),
+      MaterialPageRoute(
+        builder: (context) => JournalEntryScreen(initialContent: "Reflection: $_currentPrompt\n\n"),
+      ),
     );
   }
 
