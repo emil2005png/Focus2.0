@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart'; // Assuming google_fonts is used based on pubspec
-import 'package:focus_app/widgets/auth_gate.dart';
+import 'package:focus_app/screens/home_screen.dart';
 import 'package:focus_app/services/firestore_service.dart';
 
 class MiniFocusGameScreen extends StatefulWidget {
@@ -64,31 +64,31 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
     _controller.reset();
   }
 
-  void _onFocusComplete() {
+  Future<void> _onFocusComplete() async {
     setState(() {
       _instructionText = "Focus Locked!";
     });
-    
-    // Optional: Add haptic feedback here if using 'flutter/services.dart' HapticFeedback.vibrate();
 
-    // Save Focus Stats & Record Game
-    // Assuming 1 minute credit even for 10s game for gamification
-    FirestoreService().recordMiniGamePlayed(1); 
+    // Save Focus Stats & Record Game — await so Firestore is updated
+    // before we navigate away (prevents the gate from re-showing the game).
+    await FirestoreService().recordMiniGamePlayed(1);
 
-    // Navigate to AuthGate
-    Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-            Navigator.of(context).pushReplacement(
-                PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                    },
-                    transitionDuration: const Duration(milliseconds: 800),
-                ),
-            );
-        }
-    });
+    // Navigate directly to HomeScreen — bypasses AuthGate re-evaluation
+    // which would re-check Firestore and show the game a second time.
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const HomeScreen(),
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 800),
+        ),
+      );
+    }
   }
 
   @override
