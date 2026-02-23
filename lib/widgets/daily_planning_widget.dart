@@ -386,7 +386,9 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                 )
               else ...[
                    // Active Tasks
-                   ...tasks.where((t) => t['isCompleted'] != true).map((task) => _buildTaskItem(context, plan!, task)),
+                   ...tasks.asMap().entries
+                       .where((e) => e.value['isCompleted'] != true)
+                       .map((e) => _buildTaskItem(context, plan!, e.value, e.key)),
                    
                    // Completed Tasks
                    if (tasks.any((t) => t['isCompleted'] == true)) ...[
@@ -402,7 +404,9 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                            ],
                        ),
                        const SizedBox(height: 8),
-                       ...tasks.where((t) => t['isCompleted'] == true).map((task) => _buildTaskItem(context, plan!, task)),
+                       ...tasks.asMap().entries
+                           .where((e) => e.value['isCompleted'] == true)
+                           .map((e) => _buildTaskItem(context, plan!, e.value, e.key)),
                    ]
               ]
             ],
@@ -412,7 +416,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
     );
   }
 
-  Widget _buildTaskItem(BuildContext context, DailyPlan plan, Map<String, dynamic> task) {
+  Widget _buildTaskItem(BuildContext context, DailyPlan plan, Map<String, dynamic> task, int taskIndex) {
         final isCompleted = task['isCompleted'] == true;
         
         String? deadlineText;
@@ -463,10 +467,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
 
         return InkWell(
           onTap: () {
-               final realIndex = plan.tasks.indexWhere((t) => t['title'] == task['title']);
-               if (realIndex != -1) {
-                   _firestoreService.updateDailyPlanTask(plan.id, realIndex, !isCompleted);
-               }
+               _firestoreService.updateDailyPlanTask(plan.id, taskIndex, !isCompleted);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),

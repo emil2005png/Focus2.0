@@ -69,7 +69,7 @@ class _InspirationalMessageScreenState extends State<InspirationalMessageScreen>
     _controller.forward();
 
     // Timer to finish
-    Timer(const Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 5), () {
         if (mounted) {
             widget.onDone();
         }

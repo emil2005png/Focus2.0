@@ -11,7 +11,14 @@ class QuoteService {
     "The only way to do great work is to love what you do.",
     "Believe you can and you're halfway there.",
     "It always seems impossible until it is done.",
-    "Action is the foundational key to all success."
+    "Action is the foundational key to all success.",
+    "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    "You are never too old to set another goal or to dream a new dream.",
+    "Act as if what you do makes a difference. It does.",
+    "Dream big and dare to fail.",
+    "Do what you can, with what you have, where you are.",
+    "Keep your face always toward the sunshine—and shadows will fall behind you.",
+    "The power of imagination makes us infinite.",
   ];
 
   String getRandomQuote() {

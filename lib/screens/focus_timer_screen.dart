@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:focus_app/services/firestore_service.dart';
 
 class FocusTimerScreen extends StatefulWidget {
   const FocusTimerScreen({super.key});
@@ -73,6 +74,10 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
   }
 
   void _showCompletionDialog() {
+    // Save focus stats to Firestore
+    final focusMinutes = (_focusTime / 60).round();
+    FirestoreService().updateFocusStats(focusMinutes);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

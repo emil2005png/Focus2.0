@@ -64,7 +64,7 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
     _controller.reset();
   }
 
-  void _onFocusComplete() {
+  Future<void> _onFocusComplete() async {
     setState(() {
       _instructionText = "Focus Locked!";
     });
@@ -73,22 +73,24 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
 
     // Save Focus Stats & Record Game
     // Assuming 1 minute credit even for 10s game for gamification
-    FirestoreService().recordMiniGamePlayed(1); 
+    setState(() {
+       _instructionText = "Saving...";
+    });
+    
+    await FirestoreService().recordMiniGamePlayed(1); 
 
     // Navigate to AuthGate
-    Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-            Navigator.of(context).pushReplacement(
-                PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                    },
-                    transitionDuration: const Duration(milliseconds: 800),
-                ),
-            );
-        }
-    });
+    if (mounted) {
+        Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 800),
+            ),
+        );
+    }
   }
 
   @override

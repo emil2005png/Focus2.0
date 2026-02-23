@@ -10,7 +10,6 @@ class BreathingScreen extends StatefulWidget {
 
 class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
   String _instruction = "Inhale";
 
   @override
@@ -21,14 +20,6 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
     vsync: this,
     duration: const Duration(seconds: 16),
   )..repeat();
-
-    _animation = Tween<double>(begin: 0.8, end: 1.5).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.25, curve: Curves.easeInOut), // Inhale (0-4s)
-        reverseCurve: const Interval(0.5, 0.75, curve: Curves.easeInOut), // Exhale (8-12s)
-      ),
-    );
 
     _controller.addListener(() {
       final value = _controller.value;
@@ -67,7 +58,7 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedBuilder(
-              animation: _animation,
+              animation: _controller,
               builder: (context, child) {
                 // Manually handle scale based on phases for fuller control if needed
                 // Using controller value for size simulation

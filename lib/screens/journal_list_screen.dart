@@ -23,9 +23,6 @@ class JournalListScreen extends StatelessWidget {
             centerTitle: false,
             floating: true,
             pinned: true,
-            actions: [
-               IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: Colors.black54)),
-            ],
           ),
           StreamBuilder<QuerySnapshot>(
             stream: firestoreService.getJournals(),

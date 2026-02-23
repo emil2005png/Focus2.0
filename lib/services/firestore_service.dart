@@ -229,10 +229,12 @@ class FirestoreService {
         // increment if consecutive. For now, let's just increment if not today.
         // A robust streak needs date comparisons.
         
-        // Simple Logic: If lastFocusDate is not today, check if it was yesterday.
+        // Normalize both dates to midnight for accurate day comparison
         if (lastFocusDate != null) {
            final lastDate = DateTime.parse(lastFocusDate);
-           final difference = DateTime.now().difference(lastDate).inDays;
+           final today = DateTime(now.year, now.month, now.day);
+           final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+           final difference = today.difference(lastDay).inDays;
            if (difference == 1) {
              newStreak++;
            } else if (difference > 1) {
