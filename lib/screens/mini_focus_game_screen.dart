@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart'; // Assuming google_fonts is used based on pubspec
-import 'package:focus_app/widgets/auth_gate.dart';
+import 'package:focus_app/screens/home_screen.dart';
 import 'package:focus_app/services/firestore_service.dart';
 
 class MiniFocusGameScreen extends StatefulWidget {
@@ -73,24 +73,22 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
 
     // Save Focus Stats & Record Game
     // Assuming 1 minute credit even for 10s game for gamification
-    setState(() {
-       _instructionText = "Saving...";
-    });
-    
-    await FirestoreService().recordMiniGamePlayed(1); 
+    FirestoreService().recordMiniGamePlayed(1); 
 
     // Navigate to AuthGate
-    if (mounted) {
-        Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-                },
-                transitionDuration: const Duration(milliseconds: 800),
-            ),
-        );
-    }
+    Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+            Navigator.of(context).pushReplacement(
+                PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                    },
+                    transitionDuration: const Duration(milliseconds: 800),
+                ),
+            );
+        }
+    });
   }
 
   @override
