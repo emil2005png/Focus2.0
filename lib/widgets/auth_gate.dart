@@ -10,6 +10,8 @@ import 'package:focus_app/screens/email_verification_screen.dart';
 import 'package:focus_app/screens/inspirational_message_screen.dart';
 import 'package:focus_app/screens/mini_focus_game_screen.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class AuthGate extends StatefulWidget {
   final bool initialInspirationShown;
   const AuthGate({super.key, this.initialInspirationShown = false});
@@ -20,11 +22,38 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   late bool _hasShownInspiration;
+  bool _checkedDailyFlowPreference = false;
+  bool _shouldSkipDailyFlow = false;
 
   @override
   void initState() {
     super.initState();
     _hasShownInspiration = widget.initialInspirationShown;
+    _checkDailyFlowPreference();
+  }
+
+  Future<void> _checkDailyFlowPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final lastFlowDate = prefs.getString('last_daily_flow_date');
+    
+    if (lastFlowDate == today) {
+      if (mounted) {
+        setState(() {
+          _shouldSkipDailyFlow = true;
+          _hasShownInspiration = true;
+          _checkedDailyFlowPreference = true;
+        });
+      }
+    } else {
+      // Mark flow as started for today so it doesn't repeat
+      await prefs.setString('last_daily_flow_date', today);
+      if (mounted) {
+        setState(() {
+          _checkedDailyFlowPreference = true;
+        });
+      }
+    }
   }
 
   Future<Map<String, bool>> _checkDailyProgress() async {
@@ -38,7 +67,7 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting || !_checkedDailyFlowPreference) {
            return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         
@@ -50,7 +79,12 @@ class _AuthGateState extends State<AuthGate> {
             return const EmailVerificationScreen();
           }
 
-          // 2. Inspiration Message (Once per session loop)
+          // If we should skip the daily flow, go straight to Home
+          if (_shouldSkipDailyFlow) {
+            return const HomeScreen();
+          }
+
+          // 2. Inspiration Message (Once per day sequence)
           if (!_hasShownInspiration) {
              return InspirationalMessageScreen(
                onDone: () {

@@ -42,33 +42,59 @@ class Habit {
     );
   }
 
-  // Method to convert Habit to a Map for Firestore
+  // Method to convert Habit to a Map for Firestore (keeps 'streak' for backwards compatibility/caching if needed)
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
       'title': title,
       'createdAt': Timestamp.fromDate(createdAt),
       'completedDates': completedDates.map((e) => Timestamp.fromDate(e)).toList(),
-      'streak': streak,
+      'streak': streak, // This remains the 'saved' streak, but we'll prefer the dynamic one
       'plantType': plantType,
       'timeOfDay': timeOfDay,
       'motivationalMessage': motivationalMessage,
     };
   }
 
-  // Logic to determine the plant stage based on streak and recency
-  String get plantStage {
-    // Check if missed yesterday (faded)
-    // We need to check if the last completion was before yesterday.
-    // If completed today, it's fine.
-    // If completed yesterday, it's fine.
-    // If completed before yesterday (or never), it's potentially fading.
+  // Dynamic Streak Calculation
+  int get currentStreak {
+    if (completedDates.isEmpty) return 0;
 
-    if (completedDates.isEmpty) return '🌱'; // Seed
+    // Get unique dates (normalized to midnight) and sort them descending
+    final uniqueDates = completedDates
+        .map((d) => DateTime(d.year, d.month, d.day))
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    // Sort dates to satisfy the "last" check
+    
+    // If the latest completion is not today or yesterday, streak is broken
+    final lastCompletion = uniqueDates.first;
+    final diffDays = today.difference(lastCompletion).inDays;
+    
+    if (diffDays > 1) return 0;
+
+    int count = 1;
+    for (int i = 0; i < uniqueDates.length - 1; i++) {
+      final current = uniqueDates[i];
+      final next = uniqueDates[i + 1];
+      if (current.difference(next).inDays == 1) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  }
+
+  // Logic to determine the plant stage based on streak and recency
+  String get plantStage {
+    if (completedDates.isEmpty) return '🌱'; 
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final sortedDates = List<DateTime>.from(completedDates)..sort();
     final lastCompletion = sortedDates.last;
     final lastCompletionDate = DateTime(lastCompletion.year, lastCompletion.month, lastCompletion.day);
@@ -76,16 +102,17 @@ class Habit {
     final difference = today.difference(lastCompletionDate).inDays;
 
     if (difference > 1) {
-      return '🥀'; // Faded/Wilted if missed more than 1 day (i.e., didn't do it yesterday or today)
+      return '🥀'; // Faded/Wilted
     }
 
-    // Growth stages based on streak
-    if (streak >= 14) return '🌳'; // Fully grown tree/large plant
-    if (streak >= 7) return '🌸'; // Blooming
-    if (streak >= 3) return '🪴'; // Small Plant
-    if (streak >= 1) return '🌿'; // Sprout
+    // Growth stages based on current dynamic streak
+    final s = currentStreak;
+    if (s >= 14) return '🌳'; 
+    if (s >= 7) return '🌸'; 
+    if (s >= 3) return '🪴'; 
+    if (s >= 1) return '🌿'; 
     
-    return '🌱'; // Default Seed
+    return '🌱'; 
   }
 
   // Helper to check if completed today

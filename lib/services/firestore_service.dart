@@ -204,10 +204,20 @@ class FirestoreService {
   // --- Dashboard Stats ---
 
   // Update Focus Stats
-  Future<void> updateFocusStats(int minutes) async {
+  Future<void> updateFocusStats(int minutes, String purpose) async {
+    if (_userId == null) return;
+    
     final userRef = _userDoc;
     
-    // Use a transaction to ensure atomic updates
+    // 1. Add detailed session log
+    await _db.collection('focus_sessions').add({
+      'userId': _userId,
+      'durationMinutes': minutes,
+      'purpose': purpose,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Update user profile stats
     await _db.runTransaction((transaction) async {
       final snapshot = await transaction.get(userRef);
       
@@ -224,25 +234,19 @@ class FirestoreService {
       int newStreak = currentStreak;
       
       if (lastFocusDate != todayStr) {
-        // If last focus was yesterday, increment streak
-        // We'd need to parse the date properly, but for simplicity:
-        // increment if consecutive. For now, let's just increment if not today.
-        // A robust streak needs date comparisons.
-        
-        // Normalize both dates to midnight for accurate day comparison
-        if (lastFocusDate != null) {
-           final lastDate = DateTime.parse(lastFocusDate);
-           final today = DateTime(now.year, now.month, now.day);
-           final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
-           final difference = today.difference(lastDay).inDays;
-           if (difference == 1) {
-             newStreak++;
-           } else if (difference > 1) {
-             newStreak = 1; // Reset streak
-           }
-        } else {
-          newStreak = 1; // First time
-        }
+         if (lastFocusDate != null) {
+            final lastDate = DateTime.parse(lastFocusDate);
+            final today = DateTime(now.year, now.month, now.day);
+            final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+            final difference = today.difference(lastDay).inDays;
+            if (difference == 1) {
+              newStreak++;
+            } else if (difference > 1) {
+              newStreak = 1;
+            }
+         } else {
+           newStreak = 1;
+         }
       }
 
       transaction.update(userRef, {
@@ -530,7 +534,7 @@ class FirestoreService {
 
   // --- Daily Health Logs ---
 
-  final CollectionReference _healthLogsCollection = FirebaseFirestore.instance.collection('health_logs');
+  CollectionReference get _healthLogsCollection => _userDoc.collection('health_logs');
 
   Stream<DailyHealthLog?> getDailyHealthLog(DateTime date) {
     if (_userId == null) return Stream.value(null);
@@ -539,7 +543,6 @@ class FirestoreService {
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     return _healthLogsCollection
-        .where('userId', isEqualTo: _userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
         .limit(1)
@@ -558,7 +561,6 @@ class FirestoreService {
     final startOfSevenDaysAgo = DateTime(sevenDaysAgo.year, sevenDaysAgo.month, sevenDaysAgo.day);
 
     final snapshot = await _healthLogsCollection
-        .where('userId', isEqualTo: _userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfSevenDaysAgo))
         .orderBy('date')
         .get();
@@ -575,7 +577,6 @@ class FirestoreService {
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     final query = await _healthLogsCollection
-        .where('userId', isEqualTo: _userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
         .limit(1)
@@ -598,6 +599,92 @@ class FirestoreService {
         'screenTimeHours': screenTimeHours,
       });
     }
+
+    // Update Water Streak in User Profile
+    if (waterGlasses >= 8) {
+      final userRef = _userDoc;
+      await _db.runTransaction((transaction) async {
+        final snapshot = await transaction.get(userRef);
+        if (!snapshot.exists) return;
+
+        final data = snapshot.data() as Map<String, dynamic>;
+        final currentWaterStreak = data['waterStreak'] ?? 0;
+        final lastWaterDate = data['lastWaterDate'];
+        final todayStr = date.toIso8601String().split('T')[0];
+
+        if (lastWaterDate != todayStr) {
+          int newStreak = 1;
+          if (lastWaterDate != null) {
+            final lastDate = DateTime.parse(lastWaterDate);
+            final today = DateTime(date.year, date.month, date.day);
+            final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+            final difference = today.difference(lastDay).inDays;
+
+            if (difference == 1) {
+              newStreak = currentWaterStreak + 1;
+            }
+          }
+          transaction.update(userRef, {
+            'waterStreak': newStreak,
+            'lastWaterDate': todayStr,
+          });
+        }
+      });
+    }
+  }
+
+  // --- Weekly Events & Goal Stats ---
+
+  Future<Map<String, dynamic>> getWeeklyStats() async {
+    if (_userId == null) return {'goalDays': 0, 'isUnlocked': false};
+
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+
+    // Get focus sessions for the week
+    final focusSnapshot = await _db.collection('focus_sessions')
+        .where('userId', isEqualTo: _userId)
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
+        .get();
+
+    // Get health logs for the week
+    final healthSnapshot = await _healthLogsCollection
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
+        .get();
+
+    Map<String, double> dailyFocus = {};
+    Map<String, int> dailyWater = {};
+
+    for (var doc in focusSnapshot.docs) {
+      final data = doc.data();
+      final date = (data['timestamp'] as Timestamp).toDate().toIso8601String().split('T')[0];
+      dailyFocus[date] = (dailyFocus[date] ?? 0) + (data['durationMinutes'] ?? 0);
+    }
+
+    for (var doc in healthSnapshot.docs) {
+       final data = doc.data() as Map<String, dynamic>;
+       final date = (data['date'] as Timestamp).toDate().toIso8601String().split('T')[0];
+       dailyWater[date] = (data['waterGlasses'] ?? 0);
+    }
+
+    // Calculate goal days (Focus >= 60m OR Water >= 8)
+    Set<String> goalDates = {};
+    dailyFocus.forEach((date, mins) {
+      if (mins >= 60) goalDates.add(date);
+    });
+    dailyWater.forEach((date, glasses) {
+      if (glasses >= 8) goalDates.add(date);
+    });
+
+    int goalDays = goalDates.length;
+    bool isUnlocked = goalDays >= 5;
+
+    return {
+      'goalDays': goalDays,
+      'isUnlocked': isUnlocked,
+      'remainingDays': 5 - goalDays,
+    };
   }
   // --- Daily Plan Methods ---
 

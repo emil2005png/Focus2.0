@@ -13,12 +13,6 @@ class NotificationService {
     // Initialize Timezones
     tz.initializeTimeZones();
     
-    // Set default location (approximation or use 'local')
-    // For simplicity, we can try to get local, or set UTC. 
-    // In many Flutter apps without specific location permission, it's safer to rely on 'local' if supported,
-    // or just initialization. 'timezone' package usually needs data.
-    // 'tz.initializeTimeZones()' loads the database.
-    
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -27,6 +21,17 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // Request permissions for Android 13+
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      // Also request exact alarm permission if needed for zonedSchedule
+      await androidImplementation.requestExactAlarmsPermission();
+    }
   }
 
   Future<void> showNotification(String title, String body) async {
@@ -81,27 +86,45 @@ class NotificationService {
     );
   }
 
-  Future<void> scheduleHourlyWaterReminder() async {
+  Future<void> scheduleHydrationReminders() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'water_channel',
       'Water Reminders',
-      channelDescription: 'Hourly reminders to drink water',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
+      channelDescription: 'Hydration reminders every 2 hours',
+      importance: Importance.high,
+      priority: Priority.high,
     );
     
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
-    await flutterLocalNotificationsPlugin.periodicallyShow(
-      1,
-      'Hydration Check 💧',
-      'Have you drunk enough water?',
-      RepeatInterval.hourly,
-      platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    final hours = [8, 10, 12, 14, 16, 18, 20, 22];
+    for (int i = 0; i < hours.length; i++) {
+       final now = tz.TZDateTime.now(tz.local);
+       var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hours[i]);
+       
+       if (scheduledDate.isBefore(now)) {
+         scheduledDate = scheduledDate.add(const Duration(days: 1));
+       }
+
+       await flutterLocalNotificationsPlugin.zonedSchedule(
+         100 + i, // Unique IDs for each time slot
+         'Hydration Check 💧',
+         'Stay refreshed! Time for some water.',
+         scheduledDate,
+         platformChannelSpecifics,
+         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+         matchDateTimeComponents: DateTimeComponents.time,
+       );
+    }
+  }
+
+  Future<void> cancelHydrationReminders() async {
+    for (int i = 0; i < 8; i++) {
+      await flutterLocalNotificationsPlugin.cancel(100 + i);
+    }
   }
 
   Future<void> scheduleFocusReset() async {

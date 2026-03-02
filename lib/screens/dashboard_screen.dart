@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:focus_app/services/firestore_service.dart';
@@ -28,6 +29,7 @@ import 'package:focus_app/widgets/bouncy_button.dart';
 import 'package:focus_app/widgets/daily_planning_widget.dart';
 import 'package:focus_app/theme/app_theme.dart';
 import 'package:focus_app/services/quote_service.dart';
+import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/widgets/dashboard_feature_card.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -177,6 +179,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Weekly Event Card
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _firestoreService.getWeeklyStats(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const SizedBox.shrink();
+                      final stats = snapshot.data!;
+                      final goalDays = stats['goalDays'] as int;
+                      final isUnlocked = stats['isUnlocked'] as bool;
+                      final progress = (goalDays / 5).clamp(0.0, 1.0);
+
+                      return FadeInAnimation(
+                        delay: step * 2,
+                        duration: duration,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isUnlocked 
+                                ? [Colors.purple[400]!, Colors.purple[700]!] 
+                                : [Colors.grey[800]!, Colors.grey[900]!],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isUnlocked ? Colors.purple : Colors.black).withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isUnlocked ? Icons.stars_rounded : Icons.lock_outline_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    isUnlocked ? 'Weekly Event Unlocked! ✨' : 'Weekly Event Progress',
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  valueColor: AlwaysStoppedAnimation<Color?>(
+                                    isUnlocked ? Colors.amber[400] : Colors.purple[300],
+                                  ),
+                                  minHeight: 8,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isUnlocked 
+                                  ? 'You reached your goals for $goalDays days! Enjoy your reward.' 
+                                  : 'Meet your goals for ${stats['remainingDays']} more days to unlock this week\'s event.',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
                   // Wellness Tools Card
                   FadeInAnimation(
                     delay: step * 3,
@@ -198,16 +283,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const SizedBox.shrink();
                       final data = snapshot.data!.data() as Map<String, dynamic>?;
-                      final streak = data?['currentStreak'] ?? 0;
+                      final focusStreak = data?['currentStreak'] ?? 0;
+                      final waterStreak = data?['waterStreak'] ?? 0;
                       final minutes = data?['totalFocusMinutes'] ?? 0;
+                      
                       return FadeInAnimation(
                         delay: step * 4,
                         duration: duration,
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(child: _buildStatCard('Streak', '$streak Days', Icons.local_fire_department_rounded, Colors.orange)),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildStatCard('Focus Time', '$minutes mins', Icons.timer_rounded, Colors.blue)),
+                            Row(
+                              children: [
+                                Expanded(child: _buildStatCard('Focus Streak', '$focusStreak Days', Icons.local_fire_department_rounded, Colors.orange)),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildStatCard('Focus Time', '$minutes mins', Icons.timer_rounded, Colors.blue)),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(child: _buildStatCard('Water Streak', '$waterStreak Days', Icons.water_drop_rounded, Colors.cyan)),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                      child: StreamBuilder<List<Habit>>(
+                                    stream: _firestoreService.getHabits(),
+                                    builder: (context, habitSnapshot) {
+                                      int maxHabitStreak = 0;
+                                      if (habitSnapshot.hasData && habitSnapshot.data!.isNotEmpty) {
+                                        final streaks = habitSnapshot.data!.map((h) => h.currentStreak).toList();
+                                        maxHabitStreak = streaks.reduce((a, b) => a > b ? a : b);
+                                      }
+                                      return _buildStatCard('Best Habit', '$maxHabitStreak Days', Icons.spa_rounded, Colors.green);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       );
@@ -362,21 +473,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMoodChart(List<Map<String, dynamic>> moods) {
-    // Map mood strings to numeric values
-    Map<String, double> moodValues = {
-      'Great': 5.0,
-      'Good': 4.0,
-      'Okay': 3.0,
-      'Bad': 2.0,
-      'Terrible': 1.0,
-      '😊': 5.0,
-      '🙂': 4.0,
-      '😐': 3.0,
-      '😔': 2.0,
-      '😰': 1.0,
-      '😴': 2.5,
-    };
-
     if (moods.isEmpty) {
       return Center(
         child: Text(
@@ -386,55 +482,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    // Sort moods by date ascending
+    final sortedMoods = List<Map<String, dynamic>>.from(moods)
+      ..sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+
+    Map<String, double> moodValueMap = {
+      '😊': 5.0, '🤩': 5.0, '😌': 4.0, '🙂': 4.0, '😐': 3.0, '😔': 2.0, '😰': 1.0, '😴': 2.0,
+      'Happy': 5.0, 'Excited': 5.0, 'Calm': 4.0, 'Sad': 2.0, 'Anxious': 1.0, 'Tired': 2.0,
+    };
+
     List<FlSpot> spots = [];
-    for (int i = 0; i < moods.length; i++) {
-      String mood = moods[i]['mood'] ?? 'Okay';
-      double value = moodValues[mood] ?? 3.0;
+    for (int i = 0; i < sortedMoods.length; i++) {
+      final moodEmoji = sortedMoods[i]['mood'] ?? '😐';
+      final value = moodValueMap[moodEmoji] ?? 3.0;
       spots.add(FlSpot(i.toDouble(), value));
     }
 
-    // Ensure we have at least one spot
-    if (spots.isEmpty) {
-      spots.add(FlSpot(0, 3.0));
-    }
-
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.only(right: 20, top: 10, bottom: 10),
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             horizontalInterval: 1,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey[200]!,
-                strokeWidth: 1,
-              );
-            },
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey[200]!,
+              strokeWidth: 1,
+            ),
           ),
           titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 30,
                 getTitlesWidget: (value, meta) {
-                  if (value.toInt() >= 0 && value.toInt() < moods.length) {
-                    try {
-                      DateTime date = (moods[value.toInt()]['date'] as Timestamp).toDate();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          DateFormat('E').format(date),
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                        ),
-                      );
-                    } catch (e) {
-                      return const Text('');
-                    }
+                  int index = value.toInt();
+                  if (index >= 0 && index < sortedMoods.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('E').format(sortedMoods[index]['date'] as DateTime),
+                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      ),
+                    );
                   }
                   return const Text('');
                 },
@@ -442,24 +535,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           borderData: FlBorderData(show: false),
-          minY: 0,
-          maxY: 6,
+          minY: 0.5,
+          maxY: 5.5,
           lineBarsData: [
             LineChartBarData(
               spots: spots,
               isCurved: true,
-              color: Theme.of(context).primaryColor,
+              color: Theme.of(context).primaryColor.withOpacity(0.5),
               barWidth: 3,
-              isStrokeCapRound: true,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: Theme.of(context).primaryColor,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  );
+                  final moodEmoji = sortedMoods[index]['mood'] ?? '😐';
+                  return _EmojiDotPainter(emoji: moodEmoji);
                 },
               ),
               belowBarData: BarAreaData(
@@ -472,4 +560,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+}
+
+class _EmojiDotPainter extends FlDotPainter {
+  final String emoji;
+  final double size;
+
+  _EmojiDotPainter({required this.emoji, this.size = 20});
+
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offset) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: emoji,
+        style: TextStyle(fontSize: size),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(offset.dx - textPainter.width / 2, offset.dy - textPainter.height / 2),
+    );
+  }
+
+  @override
+  Size getSize(FlSpot spot) => Size(size, size);
+
+  @override
+  Color get mainColor => Colors.transparent;
+
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    return b;
+  }
+
+  @override
+  List<Object?> get props => [emoji, size];
 }

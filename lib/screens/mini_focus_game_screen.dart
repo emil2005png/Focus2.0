@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart'; // Assuming google_fonts is used based on pubspec
 import 'package:focus_app/screens/home_screen.dart';
 import 'package:focus_app/services/firestore_service.dart';
+import 'package:focus_app/widgets/auth_gate.dart';
 
 class MiniFocusGameScreen extends StatefulWidget {
   const MiniFocusGameScreen({super.key});
@@ -80,7 +81,7 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
         if (mounted) {
             Navigator.of(context).pushReplacement(
                 PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(initialInspirationShown: true),
+                    pageBuilder: (context, animation, secondaryAnimation) => AuthGate(initialInspirationShown: true),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
                     },

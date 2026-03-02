@@ -39,10 +39,10 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
     await prefs.setBool('water_reminder', value);
 
     if (value) {
-      await NotificationService().scheduleHourlyWaterReminder();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Water reminders enabled! 💧")));
+      await NotificationService().scheduleHydrationReminders();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Water reminders enabled (Every 2h)! 💧")));
     } else {
-      await NotificationService().cancel(1); // ID 1 for water
+      await NotificationService().cancelHydrationReminders();
     }
   }
 
@@ -110,7 +110,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
             const SizedBox(height: 12),
             _buildReminderCard(
               title: "Hydration Check",
-              description: "Hourly reminder to drink water",
+              description: "Every 2 hours reminder to drink water",
               icon: Icons.water_drop,
               color: Colors.cyan,
               value: _waterReminder,

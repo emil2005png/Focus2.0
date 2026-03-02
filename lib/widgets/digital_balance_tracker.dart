@@ -54,6 +54,27 @@ class DigitalBalanceTracker extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
+          'Screen Time',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Slider(
+          value: screenTime,
+          min: 0,
+          max: 12,
+          divisions: 24,
+          label: "${screenTime.toStringAsFixed(1)}h",
+          activeColor: color,
+          onChanged: (value) {
+            HapticFeedback.selectionClick();
+            onChanged(value);
+          },
+        ),
+        Text(
           message,
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
@@ -61,19 +82,6 @@ class DigitalBalanceTracker extends StatelessWidget {
             fontWeight: FontWeight.w500,
             color: color,
           ),
-        ),
-        const SizedBox(height: 8),
-        Slider(
-          value: screenTime,
-          min: 0,
-          max: 12, // Cap at 12 for UI, but could go higher
-          divisions: 24, // 0.5 hour increments
-          label: "${screenTime.toStringAsFixed(1)}h",
-          activeColor: color,
-          onChanged: (value) {
-            HapticFeedback.selectionClick();
-            onChanged(value);
-          },
         ),
       ],
     );

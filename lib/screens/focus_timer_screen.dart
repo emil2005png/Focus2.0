@@ -73,16 +73,18 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     });
   }
 
+  final TextEditingController _purposeController = TextEditingController();
+
   void _showCompletionDialog() {
-    // Save focus stats to Firestore
     final focusMinutes = (_focusTime / 60).round();
-    FirestoreService().updateFocusStats(focusMinutes);
+    final purpose = _purposeController.text.trim().isEmpty ? "Focus Session" : _purposeController.text.trim();
+    FirestoreService().updateFocusStats(focusMinutes, purpose);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Focus Session Complete!", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        content: const Text("Great job! Take a short break."),
+        content: Text("Great job on '$purpose'! Take a short break."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -103,6 +105,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
   void dispose() {
     _timer?.cancel();
     _pulseController.dispose();
+    _purposeController.dispose();
     super.dispose();
   }
 
@@ -119,92 +122,113 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                // Pulsing Background
-                ScaleTransition(
-                  scale: _pulseAnimation,
-                  child: Container(
-                    width: 280,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: primaryColor.withOpacity(0.1),
-                    ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Purpose Input
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                child: TextField(
+                  controller: _purposeController,
+                  enabled: !_isRunning,
+                  decoration: InputDecoration(
+                    hintText: "What are you focusing on?",
+                    labelText: "Purpose",
+                    prefixIcon: const Icon(Icons.edit_note_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.5),
                   ),
-                ),
-                SizedBox(
-                  width: 250,
-                  height: 250,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 15,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                    strokeCap: StrokeCap.round, 
-                  ),
-                ),
-                Text(
-                  _formatTime(_secondsRemaining),
-                  style: GoogleFonts.outfit(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 50),
-            
-            // Duration Slider
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: _isRunning ? 0.0 : 1.0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Column(
-                  children: [
-                    Text(
-                      "Duration: ${_selectedMinutes.toInt()} min",
-                      style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w500),
-                    ),
-                    Slider(
-                      value: _selectedMinutes,
-                      min: 5,
-                      max: 120,
-                      divisions: 23,
-                      label: "${_selectedMinutes.toInt()} min",
-                      activeColor: primaryColor,
-                      onChanged: _isRunning ? null : _updateDuration,
-                    ),
-                  ],
+                  style: GoogleFonts.outfit(),
                 ),
               ),
-            ),
-             SizedBox(height: _isRunning ? 0 : 20),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildControlButton(
-                  icon: _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: _isRunning ? Colors.orange : Colors.green,
-                  onPressed: _isRunning ? _stopTimer : _startTimer,
+              
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Pulsing Background
+                  ScaleTransition(
+                    scale: _pulseAnimation,
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: primaryColor.withOpacity(0.1),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 250,
+                    height: 250,
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 15,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeCap: StrokeCap.round, 
+                    ),
+                  ),
+                  Text(
+                    _formatTime(_secondsRemaining),
+                    style: GoogleFonts.outfit(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              
+              // Duration Slider
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _isRunning ? 0.0 : 1.0,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Duration: ${_selectedMinutes.toInt()} min",
+                        style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w500),
+                      ),
+                      Slider(
+                        value: _selectedMinutes,
+                        min: 5,
+                        max: 120,
+                        divisions: 23,
+                        label: "${_selectedMinutes.toInt()} min",
+                        activeColor: primaryColor,
+                        onChanged: _isRunning ? null : _updateDuration,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 24),
-                _buildControlButton(
-                  icon: Icons.refresh_rounded,
-                  color: Colors.grey,
-                  onPressed: _resetTimer,
-                ),
-              ],
-            ),
-          ],
+              ),
+               SizedBox(height: _isRunning ? 0 : 20),
+  
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildControlButton(
+                    icon: _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: _isRunning ? Colors.orange : Colors.green,
+                    onPressed: _isRunning ? _stopTimer : _startTimer,
+                  ),
+                  const SizedBox(width: 24),
+                  _buildControlButton(
+                    icon: Icons.refresh_rounded,
+                    color: Colors.grey,
+                    onPressed: _resetTimer,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

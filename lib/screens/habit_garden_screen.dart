@@ -36,92 +36,94 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Plant a New Ritual 🌱', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 24),
-                  TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: 'Habit Name',
-                      hintText: 'e.g., Drink Water',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    onChanged: (value) {
-                      newHabitTitle = value;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: timeOfDay,
-                    decoration: InputDecoration(
-                      labelText: 'Time of Day',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'morning', child: Text('☀️ Morning')),
-                      DropdownMenuItem(value: 'afternoon', child: Text('🌤 Afternoon')),
-                      DropdownMenuItem(value: 'night', child: Text('🌙 Night')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                         timeOfDay = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Motivation (Optional)',
-                      hintText: 'e.g., Hydration fuels focus!',
-                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                       filled: true,
-                       fillColor: Colors.grey[50],
-                    ),
-                    onChanged: (value) {
-                      motivationalMessage = value;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (newHabitTitle.isNotEmpty) {
-                          await _firestoreService.addHabit(
-                            newHabitTitle, 
-                            timeOfDay: timeOfDay,
-                            motivationalMessage: motivationalMessage.isNotEmpty ? motivationalMessage : 'Keep growing!',
-                          );
-                          if (mounted) Navigator.pop(context);
-                        }
+                    const SizedBox(height: 24),
+                    Text('Plant a New Ritual 🌱', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 24),
+                    TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Habit Name',
+                        hintText: 'e.g., Drink Water',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      onChanged: (value) {
+                        newHabitTitle = value;
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Keep it green for habit addition
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text('Plant Ritual', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: timeOfDay,
+                      decoration: InputDecoration(
+                        labelText: 'Time of Day',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'morning', child: Text('☀️ Morning')),
+                        DropdownMenuItem(value: 'afternoon', child: Text('🌤 Afternoon')),
+                        DropdownMenuItem(value: 'night', child: Text('🌙 Night')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                           timeOfDay = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Motivation (Optional)',
+                        hintText: 'e.g., Hydration fuels focus!',
+                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                         filled: true,
+                         fillColor: Colors.grey[50],
+                      ),
+                      onChanged: (value) {
+                        motivationalMessage = value;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (newHabitTitle.isNotEmpty) {
+                            await _firestoreService.addHabit(
+                              newHabitTitle, 
+                              timeOfDay: timeOfDay,
+                              motivationalMessage: motivationalMessage.isNotEmpty ? motivationalMessage : 'Keep growing!',
+                            );
+                            if (mounted) Navigator.pop(context);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green, // Keep it green for habit addition
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Plant Ritual', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -149,146 +151,156 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                     Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text('Health Log ⚡', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 24),
+                    // Digital Balance Tracker
+                    DigitalBalanceTracker(
+                      screenTime: screenTime,
+                      onChanged: (value) => setState(() => screenTime = value),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Column(
+                        children: [
+                          // Sleep
+                          Row(
+                            children: [
+                              const Icon(Icons.bedtime, color: Colors.indigo),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text('Sleep: ${sleep.toStringAsFixed(1)}h', style: GoogleFonts.outfit(fontSize: 16)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline), 
+                                onPressed: () => setState(() => sleep = (sleep - 0.5).clamp(0, 24)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 16),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline), 
+                                onPressed: () => setState(() => sleep = (sleep + 0.5).clamp(0, 24)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24),
+                          // Exercise
+                          Row(
+                            children: [
+                              const Icon(Icons.directions_run, color: Colors.orange),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                 child: Text('Exercise: ${exercise}m', style: GoogleFonts.outfit(fontSize: 16)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline), 
+                                onPressed: () => setState(() => exercise = (exercise - 15).clamp(0, 300)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 16),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline), 
+                                onPressed: () => setState(() => exercise = (exercise + 15).clamp(0, 300)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24),
+                          // Water
+                          Row(
+                            children: [
+                              const Icon(Icons.local_drink, color: Colors.blue),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text('Water: $water glasses', style: GoogleFonts.outfit(fontSize: 16)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline), 
+                                onPressed: () => setState(() => water = (water - 1).clamp(0, 20)),
+                                 padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 16),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline), 
+                                onPressed: () => setState(() => water = (water + 1).clamp(0, 20)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Health Log ⚡', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 24),
-                  // Digital Balance Tracker
-                  DigitalBalanceTracker(
-                    screenTime: screenTime,
-                    onChanged: (value) => setState(() => screenTime = value),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Column(
-                      children: [
-                        // Sleep
-                        Row(
-                          children: [
-                            const Icon(Icons.bedtime, color: Colors.indigo),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text('Sleep: ${sleep.toStringAsFixed(1)}h', style: GoogleFonts.outfit(fontSize: 16)),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline), 
-                              onPressed: () => setState(() => sleep = (sleep - 0.5).clamp(0, 24)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline), 
-                              onPressed: () => setState(() => sleep = (sleep + 0.5).clamp(0, 24)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        // Exercise
-                        Row(
-                          children: [
-                            const Icon(Icons.directions_run, color: Colors.orange),
-                            const SizedBox(width: 12),
-                            Expanded(
-                               child: Text('Exercise: ${exercise}m', style: GoogleFonts.outfit(fontSize: 16)),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline), 
-                              onPressed: () => setState(() => exercise = (exercise - 15).clamp(0, 300)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline), 
-                              onPressed: () => setState(() => exercise = (exercise + 15).clamp(0, 300)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        // Water
-                        Row(
-                          children: [
-                            const Icon(Icons.local_drink, color: Colors.blue),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text('Water: $water glasses', style: GoogleFonts.outfit(fontSize: 16)),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline), 
-                              onPressed: () => setState(() => water = (water - 1).clamp(0, 20)),
-                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline), 
-                              onPressed: () => setState(() => water = (water + 1).clamp(0, 20)),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        await _firestoreService.updateDailyHealthLog(DateTime.now(), sleep, exercise, water, screenTime);
-                        if (mounted) {
-                          Navigator.pop(context);
-                          if (screenTime > 6) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('High screen time detected. Consider a 20-minute focus break! 🧘', style: GoogleFonts.outfit()),
-                                backgroundColor: Colors.orange[800],
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          } else if (screenTime < 3) {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Great digital discipline today! 🌟', style: GoogleFonts.outfit()),
-                                backgroundColor: Colors.green[800],
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _firestoreService.updateDailyHealthLog(DateTime.now(), sleep, exercise, water, screenTime);
+                          if (mounted) {
+                            Navigator.pop(context);
+                            if (screenTime > 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('High screen time detected. Consider a 20-minute focus break! 🧘', style: GoogleFonts.outfit()),
+                                  backgroundColor: Colors.orange[800],
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                            } else if (screenTime < 3) {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Great digital discipline today! 🌟', style: GoogleFonts.outfit()),
+                                  backgroundColor: Colors.green[800],
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                            } else {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Health log saved! ✨', style: GoogleFonts.outfit()),
+                                  backgroundColor: Colors.blue[800],
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
                           }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Save Health Log', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
-                      child: Text('Save Health Log', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }
@@ -613,7 +625,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                       ),
                     ),
                   // Consistency Badge
-                  if (habit.streak >= 3 && !isCompletedToday)
+                  if (habit.currentStreak >= 3 && !isCompletedToday)
                      Container(
                        margin: const EdgeInsets.only(top: 4),
                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -645,7 +657,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-               if (habit.streak >= 3) 
+                   if (habit.currentStreak >= 3) 
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -654,7 +666,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_getStreakFlame(habit.streak)} ${habit.streak}',
+                      '${_getStreakFlame(habit.currentStreak)} ${habit.currentStreak}',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -662,7 +674,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                       ),
                     ),
                   ),
-               if (habit.streak > 0 && habit.streak < 3)
+               if (habit.currentStreak > 0 && habit.currentStreak < 3)
                    Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -671,7 +683,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${habit.streak} Day Streak',
+                      '${habit.currentStreak} Day Streak',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
