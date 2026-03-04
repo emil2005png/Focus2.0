@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:focus_app/services/auth_service.dart';
 import 'package:focus_app/services/firestore_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:focus_app/widgets/custom_text_field.dart'; // Assuming we can reuse or use standard fields
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

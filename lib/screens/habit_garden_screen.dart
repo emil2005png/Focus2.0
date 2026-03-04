@@ -341,10 +341,8 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
     return '';
   }
 
-  String _getConsistencyMessage(int streak) {
-    if (streak >= 3) return "You are building consistency like a pro!";
-    return "";
-  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -356,36 +354,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.spa_outlined, size: 80, color: Colors.green),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Your Ritual Board is Empty',
-                      style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                      const Text('Start building your daily rituals!'),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _showAddHabitDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create Ritual'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            final habits = snapshot.data!;
+            final habits = snapshot.data ?? [];
             final morningHabits = habits.where((h) => h.timeOfDay == 'morning').toList();
             final afternoonHabits = habits.where((h) => h.timeOfDay == 'afternoon').toList();
             final nightHabits = habits.where((h) => h.timeOfDay == 'night').toList();
@@ -416,17 +385,15 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                      // Insight Logic
                      String insightMessage = "";
                      final lowMoods = ['😢', '😠', '😫', '😔', '😞'];
-                     final happyMoods = ['😀', '🤩', '😊', '😂', '🥰'];
                      
                      final isLowMood = currentMood != null && lowMoods.contains(currentMood);
-                     final isHappyMood = currentMood != null && happyMoods.contains(currentMood);
                      
                      final missedHabits = totalHabits - completedHabits;
                      
-                     if (isLowMood && missedHabits >= 3) {
+                     if (completedHabits == totalHabits && totalHabits > 0) {
+                       insightMessage = "All rituals done! Great habits boost your positivity! 🌟";
+                     } else if (isLowMood && missedHabits >= 3) {
                        insightMessage = "Completing small habits may help improve your mood tomorrow.";
-                     } else if (isHappyMood && completedHabits == totalHabits && totalHabits > 0) {
-                       insightMessage = "Great habits boost your positivity!";
                      }
 
                      return CustomScrollView(
@@ -450,13 +417,25 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                         onTap: () => _showHealthLogDialog(healthLog),
                       ),
                     ),
-                     if (insightMessage.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: InsightCard(
-                          message: insightMessage,
-                          mood: currentMood ?? '✨',
+                    SliverToBoxAdapter(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SizeTransition(
+                            sizeFactor: animation,
+                            child: child,
+                          ),
                         ),
+                        child: insightMessage.isNotEmpty
+                          ? InsightCard(
+                              key: ValueKey(insightMessage),
+                              message: insightMessage,
+                              mood: currentMood ?? '✨',
+                            )
+                          : const SizedBox.shrink(key: ValueKey('empty')),
                       ),
+                    ),
                     if (habits.isEmpty)
                       SliverToBoxAdapter(
                         child:  Center(
@@ -518,11 +497,14 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
             );
           },
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showAddHabitDialog,
-          backgroundColor: Colors.green,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: Text('Add Ritual', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 80.0),
+          child: FloatingActionButton.extended(
+            onPressed: _showAddHabitDialog,
+            backgroundColor: Colors.green,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: Text('Add Ritual', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
         ),
       );
   }
@@ -693,8 +675,34 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                   ),
                 
                 InkWell(
-                  onTap: () {
-                     _firestoreService.toggleHabitCompletion(habit, DateTime.now());
+                  onTap: () async {
+                    try {
+                      final wasCompleted = habit.isCompletedToday;
+                      await _firestoreService.toggleHabitCompletion(habit, DateTime.now());
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              wasCompleted
+                                ? '${habit.title} unchecked'
+                                : '${habit.title} completed! ${habit.motivationalMessage}',
+                              style: GoogleFonts.outfit(),
+                            ),
+                            backgroundColor: wasCompleted ? Colors.grey[700] : Colors.green[700],
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Something went wrong: $e'),
+                            backgroundColor: Colors.red[700],
+                          ),
+                        );
+                      }
+                    }
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
@@ -752,7 +760,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
 
     // 4. Study Warrior: Habit "Study" streak >= 5
     bool studyWarrior = habits.any((h) => 
-      h.title.toLowerCase().contains('study') && h.streak >= 5
+      h.title.toLowerCase().contains('study') && h.currentStreak >= 5
     );
 
     final badges = [

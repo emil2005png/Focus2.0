@@ -2,8 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:focus_app/models/mood_entry.dart';
-import 'package:focus_app/models/distraction_model.dart';
+
 import 'package:focus_app/models/daily_plan.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/models/daily_health_log.dart';
@@ -221,9 +220,7 @@ class FirestoreService {
     await _db.runTransaction((transaction) async {
       final snapshot = await transaction.get(userRef);
       
-      if (!snapshot.exists) return;
-      
-      final data = snapshot.data() as Map<String, dynamic>;
+      final data = snapshot.exists ? (snapshot.data() as Map<String, dynamic>) : <String, dynamic>{};
       final currentTotal = data['totalFocusMinutes'] ?? 0;
       final currentStreak = data['currentStreak'] ?? 0;
       final lastFocusDate = data['lastFocusDate'];
@@ -249,11 +246,11 @@ class FirestoreService {
          }
       }
 
-      transaction.update(userRef, {
+      transaction.set(userRef, {
         'totalFocusMinutes': currentTotal + minutes,
         'currentStreak': newStreak,
         'lastFocusDate': todayStr,
-      });
+      }, SetOptions(merge: true));
     });
   }
 
@@ -471,7 +468,7 @@ class FirestoreService {
 
       } else {
         // Add completion
-        completedDates.add(date);
+        completedDates.add(dateOnly);
         
         // Recalculate streak
         currentStreak = _calculateStreak(completedDates);

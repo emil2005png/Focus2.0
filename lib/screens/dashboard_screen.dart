@@ -1,4 +1,4 @@
-import 'dart:math';
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,26 +6,19 @@ import 'package:focus_app/services/firestore_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:focus_app/screens/journal_entry_screen.dart';
-import 'package:focus_app/screens/mood_checkin_screen.dart';
-// import 'package:focus_app/screens/mini_focus_game_screen.dart'; 
-// Note: We need to import MiniFocusGame, but it might be circularly dependent if not careful. 
-// Ideally HomeScreen handles navigation, but QuickActions need to navigate.
-// For now, let's assume we can navigate to these screens.
 
-import 'package:focus_app/screens/log_distraction_screen.dart';
+
+
 
 import 'package:focus_app/screens/distraction_stats_screen.dart';
 
 import 'package:focus_app/services/advice_service.dart';
 import 'package:focus_app/screens/wellness_tools_screen.dart';
 import 'package:focus_app/screens/distraction_summary_screen.dart';
-import 'package:focus_app/screens/breathing_screen.dart';
-import 'package:focus_app/screens/focus_timer_screen.dart';
-import 'package:focus_app/screens/reflection_screen.dart';
+
 import 'package:focus_app/widgets/fade_in_animation.dart';
 import 'package:focus_app/widgets/glass_container.dart';
-import 'package:focus_app/widgets/bouncy_button.dart';
+
 import 'package:focus_app/widgets/daily_planning_widget.dart';
 import 'package:focus_app/theme/app_theme.dart';
 import 'package:focus_app/services/quote_service.dart';
@@ -48,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _dailyQuote = _quoteService.getRandomQuote();
+    _dailyQuote = _quoteService.getDailyQuote();
     _adviceFuture = _getAdvice();
   }
 
@@ -473,18 +466,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMoodChart(List<Map<String, dynamic>> moods) {
-    if (moods.isEmpty) {
-      return Center(
-        child: Text(
-          "No mood data yet",
-          style: TextStyle(color: Colors.grey[400]),
-        ),
-      );
-    }
-
-    // Sort moods by date ascending
-    final sortedMoods = List<Map<String, dynamic>>.from(moods)
-      ..sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // Generate last 7 days list
+    final last7Days = List.generate(7, (index) {
+      return today.subtract(Duration(days: 6 - index));
+    });
 
     Map<String, double> moodValueMap = {
       '😊': 5.0, '🤩': 5.0, '😌': 4.0, '🙂': 4.0, '😐': 3.0, '😔': 2.0, '😰': 1.0, '😴': 2.0,
@@ -492,10 +480,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     };
 
     List<FlSpot> spots = [];
-    for (int i = 0; i < sortedMoods.length; i++) {
-      final moodEmoji = sortedMoods[i]['mood'] ?? '😐';
-      final value = moodValueMap[moodEmoji] ?? 3.0;
-      spots.add(FlSpot(i.toDouble(), value));
+    List<String> moodsPerDay = []; // For the dot painter
+
+    for (int i = 0; i < last7Days.length; i++) {
+      final date = last7Days[i];
+      
+      // Find latest mood for this day
+      final dayMoods = moods.where((m) {
+        final mDate = m['date'] as DateTime;
+        return mDate.year == date.year && mDate.month == date.month && mDate.day == date.day;
+      }).toList();
+
+      if (dayMoods.isNotEmpty) {
+        // Sort by date to get the latest one in case they aren't sorted
+        dayMoods.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+        final latestMood = dayMoods.last['mood'] as String;
+        final value = moodValueMap[latestMood] ?? 3.0;
+        spots.add(FlSpot(i.toDouble(), value));
+        moodsPerDay.add(latestMood);
+      } else {
+        moodsPerDay.add(''); // Placeholder for no data
+      }
+    }
+
+    if (spots.isEmpty) {
+      return Center(
+        child: Text(
+          "No mood data from the last 7 days",
+          style: TextStyle(color: Colors.grey[400]),
+        ),
+      );
     }
 
     return Padding(
@@ -512,20 +526,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                reservedSize: 30,
+                getTitlesWidget: (value, meta) {
+                  switch (value.toInt()) {
+                    case 5: return const Text('😊', style: TextStyle(fontSize: 16));
+                    case 3: return const Text('😐', style: TextStyle(fontSize: 16));
+                    case 1: return const Text('😰', style: TextStyle(fontSize: 16));
+                    default: return const Text('');
+                  }
+                },
+              ),
+            ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   int index = value.toInt();
-                  if (index >= 0 && index < sortedMoods.length) {
+                  if (index >= 0 && index < last7Days.length) {
+                    final date = last7Days[index];
+                    final isToday = date.day == today.day && date.month == today.month && date.year == today.year;
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
-                        DateFormat('E').format(sortedMoods[index]['date'] as DateTime),
-                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                        isToday ? 'Today' : DateFormat('E').format(date),
+                        style: TextStyle(
+                          fontSize: 10, 
+                          color: isToday ? Theme.of(context).primaryColor : Colors.grey[600],
+                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     );
                   }
@@ -541,18 +575,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             LineChartBarData(
               spots: spots,
               isCurved: true,
-              color: Theme.of(context).primaryColor.withOpacity(0.5),
-              barWidth: 3,
+              color: Theme.of(context).primaryColor,
+              barWidth: 4,
+              isStrokeCapRound: true,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
-                  final moodEmoji = sortedMoods[index]['mood'] ?? '😐';
-                  return _EmojiDotPainter(emoji: moodEmoji);
+                  // Find the emoji for this spot
+                  // Spot 'x' corresponds to index in last7Days, but spots might be fewer if days skipped
+                  int dayIndex = spot.x.toInt();
+                  final moodEmoji = moodsPerDay[dayIndex];
+                  return _EmojiDotPainter(emoji: moodEmoji, size: 20);
                 },
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor.withOpacity(0.3),
+                    Theme.of(context).primaryColor.withOpacity(0.0),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
             ),
           ],

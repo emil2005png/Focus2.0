@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:focus_app/models/mood_entry.dart';
-import 'package:focus_app/services/auth_service.dart';
 import 'package:focus_app/services/firestore_service.dart';
 import 'package:focus_app/widgets/auth_gate.dart';
-import 'package:focus_app/data/quotes.dart';
-import 'dart:math';
-
-import 'package:focus_app/screens/quote_screen.dart'; // Add this import
 
 class MoodCheckInScreen extends StatefulWidget {
   const MoodCheckInScreen({super.key});

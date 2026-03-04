@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focus_app/services/auth_service.dart';
-import 'package:focus_app/screens/home_screen.dart';
-import 'package:focus_app/screens/mood_checkin_screen.dart';
+
 import 'package:focus_app/widgets/auth_gate.dart';
 
 class EmailVerificationScreen extends StatefulWidget {

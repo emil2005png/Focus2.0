@@ -24,4 +24,11 @@ class QuoteService {
   String getRandomQuote() {
     return _quotes[Random().nextInt(_quotes.length)];
   }
+
+  /// Returns a quote that stays the same all day but changes each day.
+  String getDailyQuote() {
+    final now = DateTime.now();
+    final seed = now.year * 10000 + now.month * 100 + now.day;
+    return _quotes[Random(seed).nextInt(_quotes.length)];
+  }
 }

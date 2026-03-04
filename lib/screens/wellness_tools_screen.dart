@@ -125,6 +125,23 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
               value: _focusReset,
               onChanged: _toggleFocusReset,
             ),
+            const SizedBox(height: 32),
+            Center(
+              child: TextButton.icon(
+                onPressed: () async {
+                  await NotificationService().showNotification(
+                    "Test Notification 🔔",
+                    "If you see this, notifications are working!",
+                  );
+                },
+                icon: const Icon(Icons.notifications_active),
+                label: const Text("Send Test Notification"),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.indigo,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ),
           ],
         ),
       ),

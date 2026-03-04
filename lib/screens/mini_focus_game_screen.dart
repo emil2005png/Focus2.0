@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // Assuming google_fonts is used based on pubspec
-import 'package:focus_app/screens/home_screen.dart';
+
 import 'package:focus_app/services/firestore_service.dart';
 import 'package:focus_app/widgets/auth_gate.dart';
 

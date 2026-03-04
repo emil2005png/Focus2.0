@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:focus_app/services/auth_service.dart';
-import 'package:focus_app/screens/login_screen.dart';
-import 'package:focus_app/screens/mood_checkin_screen.dart';
+
+
 import 'package:focus_app/screens/journal_list_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:focus_app/widgets/glass_container.dart';
 import 'package:focus_app/theme/app_theme.dart';
 
@@ -21,7 +20,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final AuthService _authService = AuthService();
+
 
   static const List<Widget> _widgetOptions = <Widget>[
     DashboardScreen(),
@@ -37,9 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _logout() async {
-    await _authService.signOut();
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true, // Allow body to extend behind the floating nav
       body: Stack(
         children: [
-          _widgetOptions.elementAt(_selectedIndex),
+          IndexedStack(
+            index: _selectedIndex,
+            children: _widgetOptions,
+          ),
           Positioned(
             left: 20,
             right: 20,

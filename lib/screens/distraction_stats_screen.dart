@@ -221,7 +221,7 @@ class DistractionStatsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                "${data['durationMinutes']} min",
+                                "${data['durationMinutes'] ?? 0} min",
                                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.red[400]),
                               ),
                               if (timeStr.isNotEmpty)

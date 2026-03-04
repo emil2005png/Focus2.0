@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focus_app/models/daily_plan.dart';
 import 'package:focus_app/services/firestore_service.dart';
-import 'package:focus_app/theme/app_theme.dart';
+
 import 'package:focus_app/widgets/glass_container.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:focus_app/services/notification_service.dart';
@@ -388,7 +388,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                    // Active Tasks
                    ...tasks.asMap().entries
                        .where((e) => e.value['isCompleted'] != true)
-                       .map((e) => _buildTaskItem(context, plan!, e.value, e.key)),
+                       .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
                    
                    // Completed Tasks
                    if (tasks.any((t) => t['isCompleted'] == true)) ...[
@@ -406,7 +406,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                        const SizedBox(height: 8),
                        ...tasks.asMap().entries
                            .where((e) => e.value['isCompleted'] == true)
-                           .map((e) => _buildTaskItem(context, plan!, e.value, e.key)),
+                           .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
                    ]
               ]
             ],

@@ -76,6 +76,26 @@ class JournalListScreen extends StatelessWidget {
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         direction: DismissDirection.endToStart,
+                        confirmDismiss: (direction) async {
+                          return await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Entry?'),
+                              content: const Text('This journal entry will be permanently deleted.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          ) ?? false;
+                        },
                         onDismissed: (direction) {
                           firestoreService.deleteJournal(doc.id);
                           ScaffoldMessenger.of(context).showSnackBar(

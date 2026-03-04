@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:focus_app/theme/app_theme.dart';
-import 'package:focus_app/screens/login_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:focus_app/screens/home_screen.dart';
-import 'package:focus_app/services/auth_service.dart';
-import 'package:focus_app/services/firestore_service.dart';
-import 'package:focus_app/screens/mood_checkin_screen.dart';
-import 'package:focus_app/screens/email_verification_screen.dart';
 import 'package:focus_app/screens/splash_screen.dart';
-import 'package:focus_app/widgets/auth_gate.dart';
 
 import 'package:focus_app/services/notification_service.dart';
 
