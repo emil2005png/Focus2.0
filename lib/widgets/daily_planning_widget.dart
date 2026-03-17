@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focus_app/models/daily_plan.dart';
+import 'package:focus_app/models/calendar_activity.dart';
 import 'package:focus_app/services/firestore_service.dart';
 
 import 'package:focus_app/widgets/glass_container.dart';
@@ -18,6 +19,8 @@ class DailyPlanningWidget extends StatefulWidget {
 class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
   final FirestoreService _firestoreService = FirestoreService();
   Timer? _timer;
+  Stream<DailyPlan?>? _dailyPlanStream;
+  Stream<List<CalendarActivity>>? _examsStream;
 
   @override
   void initState() {
@@ -37,7 +40,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
   void _showPlanningSheet(BuildContext context, DailyPlan? existingPlan) {
     // Initialize temporary state for the sheet
     // We use a List of Maps to hold controller and metadata for each task
-    List<Map<String, dynamic>> _tempTasks = [];
+    List<Map<String, dynamic>> tempTasks = [];
 
     if (existingPlan != null && existingPlan.tasks.isNotEmpty) {
       for (var task in existingPlan.tasks) {
@@ -46,20 +49,23 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
           deadline = DateTime.tryParse(task['deadline'].toString());
         }
 
-        _tempTasks.add({
+        tempTasks.add({
           'controller': TextEditingController(text: task['title']),
           'deadline': deadline,
           'isCompleted': task['isCompleted'] ?? false,
           'key': UniqueKey(), // Stable key for reordering
+          'isExam': task['isExam'] ?? false,
+          'id': task['id'],
         });
       }
     } else {
       // Default to 1 empty task if no plan
-       _tempTasks.add({
+       tempTasks.add({
           'controller': TextEditingController(),
           'deadline': null,
           'isCompleted': false,
           'key': UniqueKey(),
+          'isExam': false,
         });
     }
 
@@ -104,93 +110,129 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                           if (oldIndex < newIndex) {
                             newIndex -= 1;
                           }
-                          final item = _tempTasks.removeAt(oldIndex);
-                          _tempTasks.insert(newIndex, item);
+                          final item = tempTasks.removeAt(oldIndex);
+                          tempTasks.insert(newIndex, item);
                         });
                       },
                       children: [
-                        for (int index = 0; index < _tempTasks.length; index++)
+                        for (int index = 0; index < tempTasks.length; index++)
                           Container(
-                            key: _tempTasks[index]['key'],
+                            key: tempTasks[index]['key'],
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: Colors.grey[50],
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: Colors.grey[200]!),
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              leading: ReorderableDragStartListener(
-                                index: index,
-                                child: const Icon(Icons.drag_indicator_rounded, color: Colors.grey),
-                              ),
-                              title: TextField(
-                                controller: _tempTasks[index]['controller'],
-                                decoration: const InputDecoration(
-                                  hintText: 'What needs to be done?',
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                                style: GoogleFonts.outfit(fontSize: 16),
-                                textCapitalization: TextCapitalization.sentences,
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Deadline Picker
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.calendar_today_rounded,
-                                      color: _tempTasks[index]['deadline'] != null 
-                                          ? Colors.indigo 
-                                          : Colors.grey[400],
-                                      size: 20,
+                            child: Builder(
+                              builder: (context) {
+                                final isExam = tempTasks[index]['isExam'] == true;
+                                String? subtitleText;
+                                Color subtitleColor = Colors.grey;
+                                
+                                if (isExam && tempTasks[index]['deadline'] != null) {
+                                  final now = DateTime.now();
+                                  final today = DateTime(now.year, now.month, now.day);
+                                  final deadline = tempTasks[index]['deadline'] as DateTime;
+                                  final deadlineDate = DateTime(deadline.year, deadline.month, deadline.day);
+                                  final daysDiff = deadlineDate.difference(today).inDays;
+                                  
+                                  if (daysDiff < 0) {
+                                      subtitleText = "Finished";
+                                  } else if (daysDiff == 0) {
+                                      subtitleColor = Colors.red;
+                                      subtitleText = "EXAM TODAY!";
+                                  } else {
+                                      subtitleColor = Colors.redAccent;
+                                      subtitleText = "$daysDiff days remaining";
+                                  }
+                                }
+                                
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  leading: ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Icon(Icons.drag_indicator_rounded, color: Colors.grey),
+                                  ),
+                                  title: TextField(
+                                    controller: tempTasks[index]['controller'],
+                                    readOnly: isExam,
+                                    decoration: InputDecoration(
+                                      hintText: 'What needs to be done?',
+                                      border: InputBorder.none,
+                                      isDense: true,
                                     ),
-                                    onPressed: () async {
-                                        final now = DateTime.now();
-                                        final initialDate = _tempTasks[index]['deadline'] ?? now;
-                                        
-                                        final DateTime? pickedDate = await showDatePicker(
-                                          context: context,
-                                          initialDate: initialDate,
-                                          firstDate: now.subtract(const Duration(days: 1)),
-                                          lastDate: now.add(const Duration(days: 365)),
-                                        );
-                                        
-                                        if (pickedDate != null) {
-                                            TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
-                                            if (context.mounted) {
-                                                final TimeOfDay? pickedTime = await showTimePicker(
-                                                    context: context,
-                                                    initialTime: initialTime,
-                                                );
-                                                
-                                                if (pickedTime != null) {
-                                                    setSheetState(() {
-                                                        _tempTasks[index]['deadline'] = DateTime(
-                                                            pickedDate.year,
-                                                            pickedDate.month,
-                                                            pickedDate.day,
-                                                            pickedTime.hour,
-                                                            pickedTime.minute,
-                                                        );
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    },
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: isExam ? FontWeight.bold : FontWeight.normal,
+                                      color: isExam ? Colors.redAccent : Colors.black87,
+                                    ),
+                                    textCapitalization: TextCapitalization.sentences,
                                   ),
-                                  // Delete Button
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
-                                    onPressed: () {
-                                      setSheetState(() {
-                                        _tempTasks.removeAt(index);
-                                      });
-                                    },
+                                  subtitle: subtitleText != null 
+                                      ? Text(subtitleText, style: TextStyle(color: subtitleColor, fontSize: 12, fontWeight: FontWeight.bold))
+                                      : null,
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Deadline Picker
+                                      if (!isExam)
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.calendar_today_rounded,
+                                            color: tempTasks[index]['deadline'] != null 
+                                                ? Colors.indigo 
+                                                : Colors.grey[400],
+                                            size: 20,
+                                          ),
+                                          onPressed: () async {
+                                              final now = DateTime.now();
+                                              final initialDate = tempTasks[index]['deadline'] ?? now;
+                                              
+                                              final DateTime? pickedDate = await showDatePicker(
+                                                context: context,
+                                                initialDate: initialDate,
+                                                firstDate: now.subtract(const Duration(days: 1)),
+                                                lastDate: now.add(const Duration(days: 365)),
+                                              );
+                                              
+                                              if (pickedDate != null) {
+                                                  TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
+                                                  if (context.mounted) {
+                                                      final TimeOfDay? pickedTime = await showTimePicker(
+                                                          context: context,
+                                                          initialTime: initialTime,
+                                                      );
+                                                      
+                                                      if (pickedTime != null) {
+                                                          setSheetState(() {
+                                                              tempTasks[index]['deadline'] = DateTime(
+                                                                  pickedDate.year,
+                                                                  pickedDate.month,
+                                                                  pickedDate.day,
+                                                                  pickedTime.hour,
+                                                                  pickedTime.minute,
+                                                              );
+                                                          });
+                                                      }
+                                                  }
+                                              }
+                                          },
+                                        ),
+                                      // Delete Button
+                                      if (!isExam)
+                                        IconButton(
+                                          icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
+                                          onPressed: () {
+                                            setSheetState(() {
+                                              tempTasks.removeAt(index);
+                                            });
+                                          },
+                                        ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                );
+                              }
                             ),
                           ),
                       ],
@@ -206,7 +248,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                         OutlinedButton.icon(
                           onPressed: () {
                             setSheetState(() {
-                              _tempTasks.add({
+                              tempTasks.add({
                                 'controller': TextEditingController(),
                                 'deadline': null,
                                 'isCompleted': false,
@@ -238,21 +280,26 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                                  await notificationService.cancel(100 + i);
                              }
 
-                            for (int i = 0; i < _tempTasks.length; i++) {
-                                String title = _tempTasks[i]['controller'].text.trim();
+                            for (int i = 0; i < tempTasks.length; i++) {
+                                String title = tempTasks[i]['controller'].text.trim();
                                 if (title.isNotEmpty) {
                                     validPriorities.add(title);
                                     
                                     Map<String, dynamic> taskMap = {
                                         'title': title,
-                                        'isCompleted': _tempTasks[i]['isCompleted'],
+                                        'isCompleted': tempTasks[i]['isCompleted'],
                                     };
                                     
-                                    if (_tempTasks[i]['deadline'] != null) {
-                                        DateTime d = _tempTasks[i]['deadline'];
+                                    if (tempTasks[i]['isExam'] == true) {
+                                        taskMap['isExam'] = true;
+                                        taskMap['id'] = tempTasks[i]['id'];
+                                    }
+                                    
+                                    if (tempTasks[i]['deadline'] != null) {
+                                        DateTime d = tempTasks[i]['deadline'];
                                         taskMap['deadline'] = d.toIso8601String();
                                         
-                                        if (_tempTasks[i]['isCompleted'] != true && d.isAfter(DateTime.now())) {
+                                        if (tempTasks[i]['isCompleted'] != true && d.isAfter(DateTime.now())) {
                                             await notificationService.scheduleTaskReminder(100 + i, title, d);
                                         }
                                     }
@@ -297,8 +344,11 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
 
   @override
   Widget build(BuildContext context) {
+    _dailyPlanStream ??= _firestoreService.getDailyPlanStream(DateTime.now());
+    _examsStream ??= _firestoreService.getExams();
+
     return StreamBuilder<DailyPlan?>(
-      stream: _firestoreService.getDailyPlanStream(DateTime.now()),
+      stream: _dailyPlanStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
@@ -306,117 +356,149 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
 
         final plan = snapshot.data;
         var tasks = plan?.tasks ?? [];
-        final bool hasPlan = plan != null && tasks.isNotEmpty;
 
-        if (hasPlan) {
-             WidgetsBinding.instance.addPostFrameCallback((_) {
-                 _checkDeadlineAlert(context, tasks);
-             });
-        }
+        return StreamBuilder<List<CalendarActivity>>(
+          stream: _examsStream,
+          builder: (context, examSnapshot) {
+            // Handle errors gracefully - show tasks without exams
+            List<CalendarActivity> exams = [];
+            if (examSnapshot.hasData) {
+              exams = examSnapshot.data!;
+            }
+            
+            // Merge exams into tasks for display
+            List<Map<String, dynamic>> allTasks = List.from(tasks);
+            for (var exam in exams) {
+              if (!allTasks.any((t) => t['id'] == exam.id)) {
+                allTasks.add({
+                  'title': exam.title,
+                  'isCompleted': exam.isCompleted,
+                  'deadline': exam.dateTime.toIso8601String(),
+                  'isExam': true,
+                  'id': exam.id,
+                });
+              }
+            }
 
-        return GlassContainer(
-          color: Colors.white,
-          opacity: 0.8,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            final bool hasTasks = allTasks.isNotEmpty;
+
+            if (hasTasks) {
+                 WidgetsBinding.instance.addPostFrameCallback((_) {
+                     _checkDeadlineAlert(context, allTasks);
+                 });
+            }
+
+            return GlassContainer(
+              color: Colors.white,
+              opacity: 0.8,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.list_alt_rounded,
-                            color: Colors.indigo, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Today's Plan",
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                      Flexible(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.list_alt_rounded,
+                                  color: Colors.indigo, size: 24),
                             ),
-                          ),
-                          if (hasPlan)
-                             Text(
-                               "${tasks.where((t) => t['isCompleted'] == true).length}/${tasks.length} Completed",
-                               style: TextStyle(
-                                   color: Colors.grey[600], fontSize: 13),
-                             ),
-                        ],
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Today's Plan",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (hasTasks)
+                                     Text(
+                                       "${allTasks.where((t) => t['isCompleted'] == true).length}/${allTasks.length} Completed",
+                                       style: TextStyle(
+                                           color: Colors.grey[600], fontSize: 13),
+                                     ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(plan != null && plan.tasks.isNotEmpty ? Icons.edit_outlined : Icons.add_circle_outline,
+                            color: Colors.indigo),
+                        onPressed: () => _showPlanningSheet(context, plan),
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: Icon(hasPlan ? Icons.edit_outlined : Icons.add_circle_outline,
-                        color: Colors.indigo),
-                    onPressed: () => _showPlanningSheet(context, plan),
-                  ),
+                  const SizedBox(height: 16),
+                  if (!hasTasks)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              "No tasks set for today.",
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () => _showPlanningSheet(context, plan),
+                              child: const Text("Set Priorities"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else ...[
+                       // Active Tasks
+                       ...allTasks.asMap().entries
+                           .where((e) => e.value['isCompleted'] != true)
+                           .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
+                       
+                       // Completed Tasks
+                       if (allTasks.any((t) => t['isCompleted'] == true)) ...[
+                           const SizedBox(height: 16),
+                           Row(
+                               children: [
+                                   Expanded(child: Divider(color: Colors.grey[200])),
+                                   Padding(
+                                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                       child: Text("Completed", style: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.bold)),
+                                   ),
+                                   Expanded(child: Divider(color: Colors.grey[200])),
+                               ],
+                           ),
+                           const SizedBox(height: 8),
+                           ...allTasks.asMap().entries
+                               .where((e) => e.value['isCompleted'] == true)
+                               .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
+                       ]
+                  ]
                 ],
               ),
-              const SizedBox(height: 16),
-              if (!hasPlan)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          "No plan set for today.",
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () => _showPlanningSheet(context, plan),
-                          child: const Text("Set Priorities"),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else ...[
-                   // Active Tasks
-                   ...tasks.asMap().entries
-                       .where((e) => e.value['isCompleted'] != true)
-                       .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
-                   
-                   // Completed Tasks
-                   if (tasks.any((t) => t['isCompleted'] == true)) ...[
-                       const SizedBox(height: 16),
-                       Row(
-                           children: [
-                               Expanded(child: Divider(color: Colors.grey[200])),
-                               Padding(
-                                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                   child: Text("Completed", style: TextStyle(color: Colors.grey[400], fontSize: 13, fontWeight: FontWeight.bold)),
-                               ),
-                               Expanded(child: Divider(color: Colors.grey[200])),
-                           ],
-                       ),
-                       const SizedBox(height: 8),
-                       ...tasks.asMap().entries
-                           .where((e) => e.value['isCompleted'] == true)
-                           .map((e) => _buildTaskItem(context, plan, e.value, e.key)),
-                   ]
-              ]
-            ],
-          ),
+            );
+          }
         );
       },
     );
   }
 
-  Widget _buildTaskItem(BuildContext context, DailyPlan plan, Map<String, dynamic> task, int taskIndex) {
+  Widget _buildTaskItem(BuildContext context, DailyPlan? plan, Map<String, dynamic> task, int taskIndex) {
         final isCompleted = task['isCompleted'] == true;
         
         String? deadlineText;
@@ -437,14 +519,30 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
 
              if (deadline != null) {
                   final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  final deadlineDate = DateTime(deadline.year, deadline.month, deadline.day);
                   final diff = deadline.difference(now);
+                  final daysDiff = deadlineDate.difference(today).inDays;
                   
-                  if (diff.isNegative) {
-                      timeColor = Colors.red;
-                      timeIcon = Icons.warning_amber_rounded;
-                      deadlineText = "Overdue";
+                  if (task['isExam'] == true) {
+                      if (daysDiff < 0) {
+                          timeColor = Colors.grey;
+                          deadlineText = "Finished";
+                      } else if (daysDiff == 0) {
+                          timeColor = Colors.red;
+                          timeIcon = Icons.warning_amber_rounded;
+                          deadlineText = "EXAM TODAY!";
+                      } else {
+                          timeColor = Colors.redAccent;
+                          timeIcon = Icons.school;
+                          deadlineText = "$daysDiff days remaining";
+                      }
                   } else {
-                      if (diff.inMinutes < 60) {
+                      if (diff.isNegative) {
+                          timeColor = Colors.red;
+                          timeIcon = Icons.warning_amber_rounded;
+                          deadlineText = "Overdue";
+                      } else if (diff.inMinutes < 60) {
                           timeColor = Colors.orange;
                           timeIcon = Icons.access_time_filled;
                           deadlineText = "${diff.inMinutes}m left";
@@ -467,7 +565,11 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
 
         return InkWell(
           onTap: () {
-               _firestoreService.updateDailyPlanTask(plan.id, taskIndex, !isCompleted);
+               if (task['isExam'] == true) {
+                   _firestoreService.updateCalendarActivityCompletion(task['id'], !isCompleted);
+               } else if (plan != null) {
+                   _firestoreService.updateDailyPlanTask(plan.id, taskIndex, !isCompleted);
+               }
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -480,7 +582,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                     isCompleted
                         ? Icons.check_circle_rounded
                         : Icons.circle_outlined,
-                    color: isCompleted ? Colors.green : Colors.grey[400],
+                    color: isCompleted ? (task['isExam'] == true ? Colors.redAccent : Colors.green) : Colors.grey[400],
                     size: 24,
                   ),
                 ),
@@ -493,9 +595,10 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                             task['title'],
                             style: GoogleFonts.outfit(
                               fontSize: 16,
+                              fontWeight: task['isExam'] == true ? FontWeight.bold : FontWeight.normal,
                               color: isCompleted
                                   ? Colors.grey[400]
-                                  : Colors.black87,
+                                  : (task['isExam'] == true ? Colors.redAccent : Colors.black87),
                               decoration: isCompleted
                                   ? TextDecoration.lineThrough
                                   : null,
@@ -506,7 +609,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                                   margin: const EdgeInsets.only(top: 4),
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                      color: timeColor.withOpacity(0.1),
+                                      color: timeColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8)
                                   ),
                                   child: Row(

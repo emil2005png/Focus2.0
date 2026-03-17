@@ -2,15 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:flutter/foundation.dart';
+import 'package:focus_app/models/calendar_activity.dart';
 import 'package:focus_app/models/daily_plan.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/models/daily_health_log.dart';
+import 'package:focus_app/models/vision_board_task.dart';
+import 'package:focus_app/models/focus_session.dart';
 // import 'package:focus_app/models/journal_entry.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
+  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Collection References
@@ -24,6 +27,7 @@ class FirestoreService {
   CollectionReference get _moodsCollection => _userDoc.collection('moods');
   CollectionReference get _journalsCollection => _userDoc.collection('journals');
   CollectionReference get _habitsCollection => _userDoc.collection('habits');
+  CollectionReference get _visionBoardTasksCollection => _userDoc.collection('vision_board_tasks');
   
   // --- User Profile ---
 
@@ -36,7 +40,7 @@ class FirestoreService {
           .get();
       return result.docs.isEmpty;
     } catch (e) {
-      print('Error checking username: $e');
+      debugPrint('Error checking username: $e');
       return false; // Assume taken on error to be safe, or handle differently
     }
   }
@@ -88,7 +92,7 @@ class FirestoreService {
 
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      print('Error checking daily check-in: $e');
+      debugPrint('Error checking daily check-in: $e');
       return false; // Default to false on error so they can try again
     }
   }
@@ -133,7 +137,7 @@ class FirestoreService {
     
     try {
       final String filePath = 'user_profiles/$_userId.jpg';
-      print('Attempting to upload to: $filePath');
+      debugPrint('Attempting to upload to: $filePath');
       
       final Reference storageRef = _storage.ref().child(filePath);
       
@@ -144,17 +148,17 @@ class FirestoreService {
       
       // Listen to stream for debug
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        print('Upload state: ${snapshot.state}, bytes: ${snapshot.bytesTransferred}');
+        debugPrint('Upload state: ${snapshot.state}, bytes: ${snapshot.bytesTransferred}');
       }, onError: (e) {
-        print('Upload stream error: $e');
+        debugPrint('Upload stream error: $e');
       });
 
       final TaskSnapshot snapshot = await uploadTask;
-      print('Upload finished. State: ${snapshot.state}');
+      debugPrint('Upload finished. State: ${snapshot.state}');
 
       if (snapshot.state == TaskState.success) {
         final String downloadUrl = await storageRef.getDownloadURL();
-        print('Got download URL: $downloadUrl');
+        debugPrint('Got download URL: $downloadUrl');
         
         // Update Firestore with new photo URL
         await updateUserProfile({'photoUrl': downloadUrl});
@@ -163,7 +167,7 @@ class FirestoreService {
         throw Exception('Upload failed with state: ${snapshot.state}');
       }
     } catch (e) {
-      print('Detailed upload error: $e');
+      debugPrint('Detailed upload error: $e');
       rethrow;
     }
   }
@@ -273,7 +277,7 @@ class FirestoreService {
         };
       }).toList();
     } catch (e) {
-      print("Error fetching mood history: $e");
+      debugPrint("Error fetching mood history: $e");
       return [];
     }
   }
@@ -317,7 +321,7 @@ class FirestoreService {
        
        return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
     } catch (e) {
-      print('Error getting today distractions: $e');
+      debugPrint('Error getting today distractions: $e');
       return [];
     }
   }
@@ -334,7 +338,7 @@ class FirestoreService {
        
        return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
     } catch (e) {
-      print('Error getting weekly distractions: $e');
+      debugPrint('Error getting weekly distractions: $e');
       return [];
     }
   }
@@ -364,7 +368,7 @@ class FirestoreService {
        }
        return null;
     } catch (e) {
-      print('Error getting today mood: $e');
+      debugPrint('Error getting today mood: $e');
       return null;
     }
   }
@@ -383,7 +387,7 @@ class FirestoreService {
       
       return lastGameDate == today;
     } catch (e) {
-      print('Error checking mini game status: $e');
+      debugPrint('Error checking mini game status: $e');
       return false; 
     }
   }
@@ -450,14 +454,15 @@ class FirestoreService {
       
       int currentStreak = data['streak'] ?? 0;
 
-      // Check if already completed today
+      // Convert to UTC dates for reliable date checking
+      final dateOnlyUTC = DateTime.utc(dateOnly.year, dateOnly.month, dateOnly.day);
       final isCompletedToday = completedDates.any((d) => 
-          d.year == dateOnly.year && d.month == dateOnly.month && d.day == dateOnly.day);
+          DateTime.utc(d.year, d.month, d.day) == dateOnlyUTC);
 
       if (isCompletedToday) {
         // Remove completion (Undo)
         completedDates.removeWhere((d) => 
-            d.year == dateOnly.year && d.month == dateOnly.month && d.day == dateOnly.day);
+            DateTime.utc(d.year, d.month, d.day) == dateOnlyUTC);
         
         // Recalculate streak (This is complex to do perfectly backwards without full history analysis, 
         // but for now, if we undo today, we might just decrement if streak > 0. 
@@ -489,11 +494,11 @@ class FirestoreService {
     
     int streak = 0;
     final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
+    final todayDate = DateTime.utc(today.year, today.month, today.day);
     
     // Check if the last completion was today or yesterday to start the streak count
     final lastCompletion = sortedDates.last;
-    final lastCompletionDate = DateTime(lastCompletion.year, lastCompletion.month, lastCompletion.day);
+    final lastCompletionDate = DateTime.utc(lastCompletion.year, lastCompletion.month, lastCompletion.day);
     
     final diff = todayDate.difference(lastCompletionDate).inDays;
     
@@ -506,8 +511,8 @@ class FirestoreService {
       final current = sortedDates[i];
       final prev = sortedDates[i - 1];
       
-      final currentDate = DateTime(current.year, current.month, current.day);
-      final prevDate = DateTime(prev.year, prev.month, prev.day);
+      final currentDate = DateTime.utc(current.year, current.month, current.day);
+      final prevDate = DateTime.utc(prev.year, prev.month, prev.day);
       
       final difference = currentDate.difference(prevDate).inDays;
       
@@ -751,6 +756,173 @@ class FirestoreService {
          transaction.update(docRef, {'tasks': tasks});
       }
     });
+  }
+
+  // --- Calendar Activities ---
+
+  CollectionReference get _calendarActivitiesCollection => _userDoc.collection('calendar_activities');
+
+  Stream<List<CalendarActivity>> getCalendarActivities() {
+    if (_userId == null) return Stream.value([]);
+    return _calendarActivitiesCollection
+        .orderBy('dateTime', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => CalendarActivity.fromFirestore(doc)).toList();
+    });
+  }
+
+  Future<void> addCalendarActivity(CalendarActivity activity) async {
+    if (_userId == null) return;
+    await _calendarActivitiesCollection.add(activity.toFirestore());
+  }
+
+  Future<void> updateCalendarActivity(CalendarActivity activity) async {
+    if (_userId == null) return;
+    await _calendarActivitiesCollection.doc(activity.id).update(activity.toFirestore());
+  }
+
+  Future<void> updateCalendarActivityCompletion(String activityId, bool isCompleted) async {
+    if (_userId == null) return;
+    await _calendarActivitiesCollection.doc(activityId).update({'isCompleted': isCompleted});
+  }
+
+  Future<void> deleteCalendarActivity(String activityId) async {
+    if (_userId == null) return;
+    await _calendarActivitiesCollection.doc(activityId).delete();
+  }
+
+  // --- Aggregation & Analytics ---
+
+  Future<List<Map<String, dynamic>>> getMoodsForRange(DateTime start, DateTime end) async {
+    if (_userId == null) return [];
+    final snapshot = await _moodsCollection
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('timestamp')
+        .get();
+    return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+  }
+
+  // --- Vision Board ---
+
+  // Upload vision board image
+  Future<String> uploadVisionBoardImage(File imageFile) async {
+    if (_userId == null) throw Exception('User not logged in');
+    
+    try {
+      final String filePath = 'vision_boards/$_userId.jpg';
+      final Reference storageRef = _storage.ref().child(filePath);
+      
+      final SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
+      final UploadTask uploadTask = storageRef.putFile(imageFile, metadata);
+      
+      final TaskSnapshot snapshot = await uploadTask;
+      
+      if (snapshot.state == TaskState.success) {
+        final String downloadUrl = await storageRef.getDownloadURL();
+        
+        // Update Firestore with new vision board URL
+        await updateUserProfile({'visionBoardUrl': downloadUrl});
+        return downloadUrl;
+      } else {
+        throw Exception('Upload failed');
+      }
+    } catch (e) {
+      debugPrint('Vision board upload error: $e');
+      rethrow;
+    }
+  }
+
+  // Get vision board tasks stream
+  Stream<List<VisionBoardTask>> getVisionBoardTasks() {
+    if (_userId == null) return Stream.value([]);
+    return _visionBoardTasksCollection
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => VisionBoardTask.fromFirestore(doc)).toList();
+    });
+  }
+
+  // Add vision board task
+  Future<void> addVisionBoardTask(VisionBoardTask task) async {
+    if (_userId == null) return;
+    await _visionBoardTasksCollection.add(task.toFirestore());
+  }
+
+  // Update vision board task
+  Future<void> updateVisionBoardTask(VisionBoardTask task) async {
+    if (_userId == null) return;
+    await _visionBoardTasksCollection.doc(task.id).update(task.toFirestore());
+  }
+
+  // Delete vision board task
+  Future<void> deleteVisionBoardTask(String taskId) async {
+    if (_userId == null) return;
+    await _visionBoardTasksCollection.doc(taskId).delete();
+  }
+
+  Future<List<DailyHealthLog>> getHealthLogsForRange(DateTime start, DateTime end) async {
+    if (_userId == null) return [];
+    final snapshot = await _healthLogsCollection
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('date')
+        .get();
+    return snapshot.docs.map((doc) => DailyHealthLog.fromSnapshot(doc)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getFocusSessionsForRange(DateTime start, DateTime end) async {
+    if (_userId == null) return [];
+    final snapshot = await _db.collection('focus_sessions')
+        .where('userId', isEqualTo: _userId)
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('timestamp')
+        .get();
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  Stream<List<CalendarActivity>> getExams() {
+    if (_userId == null) return Stream.value([]);
+    return _calendarActivitiesCollection
+        .where('type', isEqualTo: 'exam')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs.map((doc) => CalendarActivity.fromFirestore(doc)).toList();
+      list.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      return list;
+    });
+  }
+
+  // Save detailed focus session
+  Future<void> saveFocusSession(FocusSession session) async {
+    if (_userId == null) return;
+    await _db.collection('focus_sessions').add(session.toFirestore());
+  }
+
+  // Get focus sessions for today
+  Future<List<FocusSession>> getTodayFocusSessions() async {
+    if (_userId == null) return [];
+    
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    
+    final snapshot = await _db.collection('focus_sessions')
+        .where('userId', isEqualTo: _userId)
+        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .orderBy('startTime', descending: true)
+        .get();
+        
+    return snapshot.docs.map((doc) => FocusSession.fromFirestore(doc)).toList();
+  }
+
+  // Get total focus minutes for today
+  Future<int> getTodayFocusMinutes() async {
+    final sessions = await getTodayFocusSessions();
+    int totalSeconds = sessions.fold(0, (acc, s) => acc + s.actualFocusDuration.inSeconds);
+    return totalSeconds ~/ 60;
   }
 }
 

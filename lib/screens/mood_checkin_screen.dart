@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:focus_app/services/firestore_service.dart';
+import 'package:focus_app/services/points_service.dart';
 import 'package:focus_app/widgets/auth_gate.dart';
 
 class MoodCheckInScreen extends StatefulWidget {
@@ -29,10 +30,19 @@ class _MoodCheckInScreenState extends State<MoodCheckInScreen> {
     });
 
     try {
+       // Check if mood was already logged today before adding points
+       final todayMood = await FirestoreService().getTodayMood();
+       final pointsToAward = todayMood == null; // True if no mood logged yet today
+
        await FirestoreService().addMood(
         moodIndex: _selectedMoodIndex,
         note: _noteController.text.trim(),
       );
+      
+      // Award points for daily check-in only if it's the first time today
+      if (pointsToAward) {
+        await PointsService().awardMoodCheckIn();
+      }
       
         if (mounted) {
            Navigator.pushReplacement(

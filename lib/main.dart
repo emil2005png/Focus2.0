@@ -3,6 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:focus_app/theme/app_theme.dart';
 import 'package:focus_app/screens/splash_screen.dart';
 
+import 'package:provider/provider.dart';
+import 'package:focus_app/providers/calendar_provider.dart';
+import 'package:focus_app/providers/analytics_provider.dart';
 import 'package:focus_app/services/notification_service.dart';
 
 void main() async {
@@ -12,8 +15,20 @@ void main() async {
   // Initialize Notifications
   final notificationService = NotificationService();
   await notificationService.init();
+  
+  // Schedule recurring notifications
+  await notificationService.scheduleHydrationReminders();
+  await notificationService.scheduleFocusReset();
 
-  runApp(const FocusApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CalendarProvider()),
+        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
+      ],
+      child: const FocusApp(),
+    ),
+  );
 }
 
 class FocusApp extends StatelessWidget {

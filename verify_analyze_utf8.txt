@@ -1,0 +1,6 @@
+﻿Analyzing Focus2.0...                                           
+
+   info - The private field _focusedDay could be 'final' - lib\screens\dashboard_screen.dart:38:12 - prefer_final_fields
+warning - The value of the field '_focusedDay' isn't used - lib\screens\dashboard_screen.dart:38:12 - unused_field
+warning - The value of the field '_selectedDay' isn't used - lib\screens\dashboard_screen.dart:39:13 - unused_field
+

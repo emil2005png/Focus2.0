@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/models/daily_health_log.dart';
 import 'package:focus_app/services/firestore_service.dart';
+import 'package:focus_app/services/points_service.dart';
 import 'package:focus_app/widgets/digital_balance_tracker.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:focus_app/models/badge.dart' as app_badge;
-import 'package:focus_app/models/weekly_summary.dart';
-import 'package:intl/intl.dart';
 
 class HabitGardenScreen extends StatefulWidget {
   const HabitGardenScreen({super.key});
@@ -17,6 +15,7 @@ class HabitGardenScreen extends StatefulWidget {
 
 class _HabitGardenScreenState extends State<HabitGardenScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final PointsService _pointsService = PointsService();
 
   void _showAddHabitDialog() {
     String newHabitTitle = '';
@@ -69,7 +68,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: timeOfDay,
+                      initialValue: timeOfDay,
                       decoration: InputDecoration(
                         labelText: 'Time of Day',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -111,7 +110,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                               timeOfDay: timeOfDay,
                               motivationalMessage: motivationalMessage.isNotEmpty ? motivationalMessage : 'Keep growing!',
                             );
-                            if (mounted) Navigator.pop(context);
+                            if (context.mounted) Navigator.pop(context);
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -263,7 +262,8 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                       child: ElevatedButton(
                         onPressed: () async {
                           await _firestoreService.updateDailyHealthLog(DateTime.now(), sleep, exercise, water, screenTime);
-                          if (mounted) {
+                          await _pointsService.awardHealthLog();
+                          if (context.mounted) {
                             Navigator.pop(context);
                             if (screenTime > 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -323,7 +323,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
           TextButton(
             onPressed: () async {
               await _firestoreService.deleteHabit(habitId);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Dig Up'),
@@ -473,18 +473,13 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     ],
                     const SliverToBoxAdapter(child: SizedBox(height: 20)),
                     SliverToBoxAdapter(
-                      child: FutureBuilder<WeeklyData>(
-                        future: _calculateWeeklyData(habits),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return const SizedBox.shrink();
-                          final data = snapshot.data!;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildWeeklySummaryCard(data.summary),
-                              if (data.badges.isNotEmpty) _buildBadgesSection(data.badges),
-                            ],
-                          );
+                      child: StreamBuilder<Map<String, dynamic>>(
+                        stream: _pointsService.getGamificationDataStream(),
+                        builder: (context, gamSnap) {
+                          final gData = gamSnap.data ?? {'totalPoints': 0, 'unlockedSections': <String>[]};
+                          final totalPoints = gData['totalPoints'] as int;
+                          final unlocked = List<String>.from(gData['unlockedSections'] ?? []);
+                          return _buildUnlockableSections(totalPoints, unlocked);
                         },
                       ),
                     ),
@@ -500,6 +495,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 80.0),
           child: FloatingActionButton.extended(
+            heroTag: 'habit_garden_fab',
             onPressed: _showAddHabitDialog,
             backgroundColor: Colors.green,
             icon: const Icon(Icons.add, color: Colors.white),
@@ -547,20 +543,20 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
     return GestureDetector(
       onLongPress: () => _deleteHabit(habit.id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
-            color: isCompletedToday ? Colors.green.withOpacity(0.3) : Colors.transparent,
+            color: isCompletedToday ? Colors.green.withValues(alpha: 0.3) : Colors.transparent,
             width: 1.5,
           ),
         ),
@@ -571,7 +567,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: isCompletedToday ? Colors.green.withOpacity(0.1) : Colors.grey[50],
+                color: isCompletedToday ? Colors.green.withValues(alpha: 0.1) : Colors.grey[50],
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -590,21 +586,25 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                   Text(
                     habit.title,
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: isCompletedToday ? Colors.green[800] : Colors.black87,
                       decoration: isCompletedToday ? TextDecoration.lineThrough : null,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   if (habit.motivationalMessage.isNotEmpty && !isCompletedToday)
                     Text(
                       habit.motivationalMessage,
                        style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 15,
                         color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   // Consistency Badge
                   if (habit.currentStreak >= 3 && !isCompletedToday)
@@ -617,7 +617,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                        ),
                        child: Text(
                         "You are building consistency like a pro!",
-                        style: TextStyle(fontSize: 10, color: Colors.blue[800], fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 12, color: Colors.blue[800], fontWeight: FontWeight.bold),
                        ),
                      ),
 
@@ -626,7 +626,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                      Text(
                       "Completed! Well done.",
                        style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 15,
                         color: Colors.green[600],
                         fontWeight: FontWeight.w500,
                       ),
@@ -650,7 +650,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     child: Text(
                       '${_getStreakFlame(habit.currentStreak)} ${habit.currentStreak}',
                       style: GoogleFonts.outfit(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.orange[800],
                       ),
@@ -667,7 +667,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     child: Text(
                       '${habit.currentStreak} Day Streak',
                       style: GoogleFonts.outfit(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.orange[800],
                       ),
@@ -679,13 +679,16 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     try {
                       final wasCompleted = habit.isCompletedToday;
                       await _firestoreService.toggleHabitCompletion(habit, DateTime.now());
+                      if (!wasCompleted) {
+                        await _pointsService.awardHabitCompletion(habit.title);
+                      }
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
                               wasCompleted
                                 ? '${habit.title} unchecked'
-                                : '${habit.title} completed! ${habit.motivationalMessage}',
+                                : '${habit.title} completed! +15pts 🌱',
                               style: GoogleFonts.outfit(),
                             ),
                             backgroundColor: wasCompleted ? Colors.grey[700] : Colors.green[700],
@@ -730,257 +733,163 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
     );
   }
 
-  Future<WeeklyData> _calculateWeeklyData(List<Habit> habits) async {
-    final healthLogs = await _firestoreService.getHealthLogsForLast7Days();
-    
-    // --- Badge Logic ---
-    // 1. Hydration Hero: 7 days water >= 8 glasses
-    int waterStreak = 0;
-    int currentWaterStreak = 0;
-    int hydrationDays = 0;
-    for (var log in healthLogs) {
-        if (log.waterGlasses >= 8) {
-            currentWaterStreak++;
-            hydrationDays++;
-        } else {
-            if (currentWaterStreak > waterStreak) waterStreak = currentWaterStreak;
-            currentWaterStreak = 0;
-        }
-    }
-    if (currentWaterStreak > waterStreak) waterStreak = currentWaterStreak; // Check last streak
-    bool hydrationHero = hydrationDays >= 7;
-
-    // 2. Sleep Guardian: 7 days sleep >= 7h
-    int sleepStreak = healthLogs.where((log) => log.sleepHours >= 7).length;
-    bool sleepGuardian = sleepStreak >= 7;
-
-    // 3. Fitness Starter: 3 days exercise > 0
-    int exerciseDays = healthLogs.where((log) => log.exerciseMinutes > 0).length;
-    bool fitnessStarter = exerciseDays >= 3;
-
-    // 4. Study Warrior: Habit "Study" streak >= 5
-    bool studyWarrior = habits.any((h) => 
-      h.title.toLowerCase().contains('study') && h.currentStreak >= 5
-    );
-
-    final badges = [
-      app_badge.Badge(
-        id: 'hydration',
-        name: 'Hydration Hero',
-        icon: '💧',
-        description: 'Drank 8+ glasses of water for 7 days',
-        color: Colors.blue,
-        isEarned: hydrationHero,
-      ),
-      app_badge.Badge(
-        id: 'sleep',
-        name: 'Sleep Guardian',
-        icon: '🌙',
-        description: 'Slept 7+ hours for 7 days',
-        color: Colors.indigo,
-        isEarned: sleepGuardian,
-      ),
-      app_badge.Badge(
-        id: 'fitness',
-        name: 'Fitness Starter',
-        icon: '💪',
-        description: 'Worked out 3 times this week',
-        color: Colors.orange,
-        isEarned: fitnessStarter,
-      ),
-      app_badge.Badge(
-        id: 'study',
-        name: 'Study Warrior',
-        icon: '📚',
-        description: '5-day study streak',
-        color: Colors.red,
-        isEarned: studyWarrior,
-      ),
+  Widget _buildUnlockableSections(int totalPoints, List<String> unlocked) {
+    final sections = [
+      {'id': 'hydration_hero', 'title': 'Hydration Hero', 'emoji': '🚰', 'desc': 'Track hydration goals & earn bonus points', 'cost': 500, 'color': Colors.cyan, 'gradient': [Colors.cyan[300]!, Colors.blue[500]!]},
+      {'id': 'sleep_guardian', 'title': 'Sleep Guardian', 'emoji': '😴', 'desc': 'Sleep quality insights & reminders', 'cost': 1000, 'color': Colors.indigo, 'gradient': [Colors.indigo[300]!, Colors.deepPurple[500]!]},
+      {'id': 'fitness_starter', 'title': 'Fitness Starter', 'emoji': '🏃', 'desc': 'Exercise tracking & workout tips', 'cost': 1500, 'color': Colors.orange, 'gradient': [Colors.orange[300]!, Colors.deepOrange[500]!]},
+      {'id': 'study_warrior', 'title': 'Study Warrior', 'emoji': '📚', 'desc': 'Study tracking & focus techniques', 'cost': 2000, 'color': Colors.green, 'gradient': [Colors.green[300]!, Colors.teal[500]!]},
     ];
 
-    // --- Summary Logic ---
-    double totalScreenTime = 0;
-    int totalWater = 0;
-    String bestDay = 'N/A';
-    double maxScore = -1;
-
-    for (var log in healthLogs) {
-        totalScreenTime += log.screenTimeHours;
-        totalWater += log.waterGlasses;
-        
-        // Calculate daily score roughly (approximate since we don't have habit data per day easily accessible here without more complexity)
-        // We'll use the health metrics for "Best Day" estimation
-        double score = (log.sleepHours / 8.0) * 30 + (log.exerciseMinutes / 30.0) * 20 + (log.waterGlasses / 8.0) * 10;
-        if (score > maxScore) {
-            maxScore = score;
-            bestDay = DateFormat('EEEE').format(log.date);
-        }
-    }
-
-    double avgScreenTime = healthLogs.isNotEmpty ? totalScreenTime / healthLogs.length : 0.0;
-
-    final summary = WeeklySummary(
-        averageScreenTime: avgScreenTime,
-        bestDay: bestDay,
-        hydrationStreak: waterStreak,
-        totalWaterIntake: totalWater,
-    );
-
-    return WeeklyData(badges: badges, summary: summary);
-  }
-
-  Widget _buildWeeklySummaryCard(WeeklySummary summary) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Weekly Digital Health Summary 📊',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildSummaryItem('Avg Screen Time', '${summary.averageScreenTime.toStringAsFixed(1)}h', Icons.phonelink_ring, Colors.purple),
-              _buildSummaryItem('Best Day', summary.bestDay, Icons.star, Colors.amber),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-             children: [
-               _buildSummaryItem('Hydration Streak', '${summary.hydrationStreak} days', Icons.water_drop, Colors.blue),
-               // You can add more items here
-             ],
-           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBadgesSection(List<app_badge.Badge> badges) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Text(
-            'Weekly Achievements 🏆',
+            'Unlockable Sections 🏆',
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Colors.grey[800],
             ),
           ),
-        ),
-        SizedBox(
-          height: 140,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: badges.length,
-            itemBuilder: (context, index) {
-              final badge = badges[index];
-              return Container(
-                width: 100,
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: badge.isEarned ? badge.color.withOpacity(0.1) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: badge.isEarned ? badge.color.withOpacity(0.5) : Colors.grey[300]!,
-                    width: 2,
+          const SizedBox(height: 12),
+          ...sections.map((s) {
+            final isUnlocked = unlocked.contains(s['id']);
+            final cost = s['cost'] as int;
+            final color = s['color'] as Color;
+            final gradient = s['gradient'] as List<Color>;
+            final progress = (totalPoints / cost).clamp(0.0, 1.0);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isUnlocked ? color : Colors.grey).withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
                 child: Column(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     Text(
-                       badge.icon,
-                       style: TextStyle(
-                         fontSize: 32,
-                         color: badge.isEarned ? null : Colors.grey.withOpacity(0.5),
-                       ),
-                     ),
-                     const SizedBox(height: 8),
-                     Text(
-                       badge.name,
-                       textAlign: TextAlign.center,
-                       style: GoogleFonts.outfit(
-                         fontSize: 12,
-                         fontWeight: FontWeight.bold,
-                         color: badge.isEarned ? badge.color : Colors.grey,
-                       ),
-                     ),
-                     if (!badge.isEarned)
-                       Padding(
-                         padding: const EdgeInsets.only(top: 4),
-                         child: Icon(Icons.lock, size: 12, color: Colors.grey[400]),
-                       ),
-                   ],
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isUnlocked ? gradient : [Colors.grey[400]!, Colors.grey[600]!],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(s['emoji'] as String, style: const TextStyle(fontSize: 28)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s['title'] as String,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  s['desc'] as String,
+                                  style: GoogleFonts.outfit(fontSize: 11, color: Colors.white70),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isUnlocked)
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check, color: Colors.white, size: 16),
+                            ),
+                          if (!isUnlocked)
+                            const Icon(Icons.lock, color: Colors.white54, size: 22),
+                        ],
+                      ),
+                    ),
+                    if (!isUnlocked)
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '$totalPoints / $cost pts',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: totalPoints >= cost ? color : Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    totalPoints >= cost ? 'Unlock 🔓' : 'Need ${cost - totalPoints} more',
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: totalPoints >= cost ? Colors.white : Colors.grey[600],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.grey[200],
+                                valueColor: AlwaysStoppedAnimation<Color>(color),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (isUnlocked)
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: color, size: 16),
+                            const SizedBox(width: 6),
+                            Text('Unlocked!', style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }
@@ -1073,7 +982,7 @@ class EnergyMeterWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1119,6 +1028,8 @@ class EnergyMeterWidget extends StatelessWidget {
                    Text(
                     message,
                     style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Text('Tap to log health stats', style: TextStyle(fontSize: 12, color: Colors.blue[600])),

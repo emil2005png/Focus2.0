@@ -91,17 +91,18 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isNotEmpty) {
+                 final messenger = ScaffoldMessenger.of(context);
                  Navigator.pop(context); // Close dialog first
                  try {
                      await AuthService().sendPasswordResetEmail(email);
                      if (mounted) {
-                         ScaffoldMessenger.of(context).showSnackBar(
+                         messenger.showSnackBar(
                              const SnackBar(content: Text('Password reset email sent!'), backgroundColor: Colors.green)
                          );
                      }
                  } catch (e) {
                      if (mounted) {
-                         ScaffoldMessenger.of(context).showSnackBar(
+                         messenger.showSnackBar(
                              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red)
                          );
                      }

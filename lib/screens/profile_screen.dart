@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:focus_app/services/auth_service.dart';
 import 'package:focus_app/services/firestore_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
   String? _currentUsername; // To check if username changed
+  StreamSubscription<DocumentSnapshot>? _profileSubscription;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _profileSubscription?.cancel();
     _usernameController.dispose();
     _ageController.dispose();
     _genderController.dispose();
@@ -47,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _email = user?.email;
     });
 
-    _firestoreService.getUserProfile().listen((snapshot) {
+    _profileSubscription = _firestoreService.getUserProfile().listen((snapshot) {
       if (snapshot.exists && mounted) {
         final data = snapshot.data() as Map<String, dynamic>;
         setState(() {
@@ -281,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // Gender Dropdown
               DropdownButtonFormField<String>(
-                value: _genderController.text.isNotEmpty && ['Male', 'Female', 'Other'].contains(_genderController.text)
+                initialValue: _genderController.text.isNotEmpty && ['Male', 'Female', 'Other'].contains(_genderController.text)
                     ? _genderController.text
                     : null,
                 decoration: const InputDecoration(

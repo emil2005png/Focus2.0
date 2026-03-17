@@ -1,0 +1,6 @@
+﻿Analyzing Focus2.0...                                           
+
+warning - Unused import: 'package:focus_app/models/badge.dart' - lib\screens\habit_garden_screen.dart:8:8 - unused_import
+warning - Unused import: 'package:focus_app/models/weekly_summary.dart' - lib\screens\habit_garden_screen.dart:9:8 - unused_import
+warning - Unused import: 'package:intl/intl.dart' - lib\screens\habit_garden_screen.dart:10:8 - unused_import
+

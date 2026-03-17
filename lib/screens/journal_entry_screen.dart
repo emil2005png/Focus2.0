@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:focus_app/services/firestore_service.dart';
+import 'package:focus_app/services/points_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JournalEntryScreen extends StatefulWidget {
@@ -64,6 +65,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           content,
           mood: _selectedMood,
         );
+        await PointsService().awardJournalEntry();
       } else {
         // Update Existing
         await _firestoreService.updateJournal(
@@ -129,7 +131,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+                        color: isSelected ? Colors.blue.withValues(alpha: 0.2) : Colors.transparent,
                         shape: BoxShape.circle,
                         border: isSelected ? Border.all(color: Colors.blue, width: 2) : null,
                       ),

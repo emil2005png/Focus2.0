@@ -70,28 +70,30 @@ class _SignupScreenState extends State<SignupScreen> {
           throw Exception('Failed to create user profile. Please try again.');
         }
 
-        if (mounted) {
-          try {
-            // Send verification email
-            await AuthService().sendEmailVerification();
-             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account created! Please check your email to verify.'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } catch (e) {
-            // If email sending fails (e.g., rate limit), still proceed but warn user
-             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account created, but failed to send verification email. You can resend it from the next screen.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          
-          Navigator.pop(context); // Go back to Login (and let AuthGate redirect to Verification)
+        if (!mounted) return;
+        try {
+          // Send verification email
+          await AuthService().sendEmailVerification();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created! Please check your email to verify.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } catch (e) {
+          // If email sending fails (e.g., rate limit), still proceed but warn user
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created, but failed to send verification email. You can resend it from the next screen.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         }
+        
+        if (!mounted) return;
+        Navigator.pop(context); // Go back to Login (and let AuthGate redirect to Verification)
       } on FirebaseAuthException catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

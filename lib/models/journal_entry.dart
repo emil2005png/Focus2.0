@@ -30,7 +30,7 @@ class JournalEntry {
       userId: map['userId'] ?? '',
       title: map['title'] ?? '',
       content: map['content'] ?? '',
-      timestamp: (map['timestamp'] as Timestamp).toDate(),
+      timestamp: map['timestamp'] != null ? (map['timestamp'] as Timestamp).toDate() : DateTime.now(),
     );
   }
 }

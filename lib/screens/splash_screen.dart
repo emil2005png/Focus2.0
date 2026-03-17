@@ -85,12 +85,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 opacity: _fadeAnimation,
                 child: SlideTransition(
                   position: _slideAnimation,
-                  child: Text(
-                    'Focus',
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.0,
-                        ),
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        'assets/logo.png',
+                        width: 150,
+                        height: 150,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Focus',
+                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2.0,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
               ),

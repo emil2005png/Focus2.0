@@ -1,4 +1,4 @@
-import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:focus_app/services/firestore_service.dart';
@@ -120,11 +120,11 @@ class _MiniFocusGameScreenState extends State<MiniFocusGameScreen>
                     height: 200,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withValues(alpha: 0.2),
                       boxShadow: _isHolding
                           ? [
                               BoxShadow(
-                                color: Theme.of(context).primaryColor.withOpacity(0.4),
+                                color: Theme.of(context).primaryColor.withValues(alpha: 0.4),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                               )

@@ -86,7 +86,7 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
+                          color: Colors.blue.withValues(alpha: 0.3),
                           blurRadius: 30,
                           spreadRadius: 10,
                         )

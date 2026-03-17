@@ -1,0 +1,16 @@
+﻿Analyzing Focus2.0...                                           
+
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\login_screen.dart:98:47 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\login_screen.dart:104:47 - use_build_context_synchronously
+  error - Expected to find ';' - lib\screens\reflection_screen.dart:112:7 - expected_token
+warning - Dead code - lib\screens\reflection_screen.dart:112:8 - dead_code
+  error - Expected an identifier - lib\screens\reflection_screen.dart:112:8 - missing_identifier
+  error - Expected to find ';' - lib\screens\reflection_screen.dart:112:8 - expected_token
+  error - Unexpected text ';' - lib\screens\reflection_screen.dart:112:8 - unexpected_token
+  error - Expected an identifier - lib\screens\reflection_screen.dart:113:5 - missing_identifier
+  error - Unexpected text ';' - lib\screens\reflection_screen.dart:113:5 - unexpected_token
+   info - Unnecessary empty statement - lib\screens\reflection_screen.dart:113:6 - empty_statements
+   info - Don't use 'BuildContext's across async gaps - lib\screens\signup_screen.dart:77:35 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\signup_screen.dart:85:35 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\signup_screen.dart:93:25 - use_build_context_synchronously
+

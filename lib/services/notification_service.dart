@@ -117,7 +117,7 @@ class NotificationService {
          'Stay refreshed! Time for some water.',
          scheduledDate,
          platformChannelSpecifics,
-         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
          matchDateTimeComponents: DateTimeComponents.time,
        );
@@ -159,5 +159,76 @@ class NotificationService {
 
   Future<void> cancelAll() async {
     await flutterLocalNotificationsPlugin.cancelAll();
+  }
+
+  Future<void> scheduleExamCountdown(String examTitle, DateTime examDate) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final examDay = DateTime(examDate.year, examDate.month, examDate.day);
+    final daysRemaining = examDay.difference(today).inDays;
+
+    if (daysRemaining < 0) return;
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'exam_countdown_channel',
+      'Exam Countdowns',
+      channelDescription: 'Daily reminders for upcoming exams',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Schedule for 8:00 AM every day until the exam
+    for (int i = 0; i <= daysRemaining; i++) {
+        final scheduledDate = today.add(Duration(days: i)).add(const Duration(hours: 8));
+        final remainingOnDay = daysRemaining - i;
+        
+        if (scheduledDate.isBefore(now)) continue;
+
+        String body = remainingOnDay == 0 
+            ? "Today is the day! Good luck with your $examTitle! 🍀" 
+            : "$remainingOnDay days until your $examTitle exam. Stay focused! 📚";
+
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          2000 + examDate.hashCode + i, // Unique ID per exam per day
+          'Exam Countdown 🎓',
+          body,
+          tz.TZDateTime.from(scheduledDate, tz.local),
+          platformChannelSpecifics,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+    }
+  }
+
+  Future<void> scheduleAlarm(int id, String title, String body, DateTime scheduledTime) async {
+    if (scheduledTime.isBefore(DateTime.now())) return;
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'focus_alarm_channel',
+      'Focus Alarm',
+      channelDescription: 'Alarm for focus session completion',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      fullScreenIntent: true,
+    );
+    
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledTime, tz.local),
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime
+    );
   }
 }

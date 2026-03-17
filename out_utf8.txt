@@ -1,0 +1,4 @@
+﻿Analyzing Focus2.0...                                           
+
+  error - The getter 'blue' isn't defined for the type 'AppGradients' - lib\screens\dashboard_screen.dart:187:50 - undefined_getter
+

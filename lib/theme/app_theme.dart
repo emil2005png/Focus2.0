@@ -15,6 +15,12 @@ class AppGradients {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient purple = LinearGradient(
+    colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient orange = LinearGradient(
     colors: [Color(0xFFFF9F1C), Color(0xFFFFBF69)],
     begin: Alignment.topLeft,
@@ -23,8 +29,8 @@ class AppGradients {
 
   static LinearGradient glass = LinearGradient(
     colors: [
-      Colors.white.withOpacity(0.3),
-      Colors.white.withOpacity(0.1),
+      Colors.white.withValues(alpha: 0.3),
+      Colors.white.withValues(alpha: 0.1),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -34,7 +40,7 @@ class AppGradients {
 class AppShadows {
   static final List<BoxShadow> primary = [
     BoxShadow(
-      color: const Color(0xFF6B4EFF).withOpacity(0.3),
+      color: const Color(0xFF6B4EFF).withValues(alpha: 0.3),
       blurRadius: 20,
       offset: const Offset(0, 10),
     ),
@@ -42,7 +48,7 @@ class AppShadows {
 
   static final List<BoxShadow> soft = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.05),
+      color: Colors.black.withValues(alpha: 0.05),
       blurRadius: 20,
       offset: const Offset(0, 10),
     ),
@@ -94,7 +100,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         elevation: 4,
-        shadowColor: primaryColor.withOpacity(0.4),
+        shadowColor: primaryColor.withValues(alpha: 0.4),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -106,7 +112,7 @@ class AppTheme {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.1)),
+        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),

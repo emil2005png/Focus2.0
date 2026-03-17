@@ -65,9 +65,9 @@ class DistractionSummaryScreen extends StatelessWidget {
           // Most Common Category
           String topCategory = "None";
           int maxCatCount = 0;
-          categoryCounts.forEach((cat, count) {
-            if (count > maxCatCount) {
-              maxCatCount = count;
+          categoryCounts.forEach((cat, c) {
+            if (c > maxCatCount) {
+              maxCatCount = c;
               topCategory = cat;
             }
           });
@@ -117,7 +117,7 @@ class DistractionSummaryScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -128,7 +128,7 @@ class DistractionSummaryScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 32),

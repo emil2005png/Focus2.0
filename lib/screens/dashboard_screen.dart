@@ -6,15 +6,14 @@ import 'package:focus_app/services/firestore_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
-
-
+import 'package:focus_app/screens/calendar_screen.dart';
+import 'package:focus_app/screens/analytics_screen.dart';
+import 'package:focus_app/screens/achievements_screen.dart';
 
 import 'package:focus_app/screens/distraction_stats_screen.dart';
 
 import 'package:focus_app/services/advice_service.dart';
 import 'package:focus_app/screens/wellness_tools_screen.dart';
-import 'package:focus_app/screens/distraction_summary_screen.dart';
 
 import 'package:focus_app/widgets/fade_in_animation.dart';
 import 'package:focus_app/widgets/glass_container.dart';
@@ -24,6 +23,8 @@ import 'package:focus_app/theme/app_theme.dart';
 import 'package:focus_app/services/quote_service.dart';
 import 'package:focus_app/models/habit.dart';
 import 'package:focus_app/widgets/dashboard_feature_card.dart';
+import 'package:focus_app/screens/vision_board_screen.dart';
+import 'package:focus_app/services/points_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,6 +44,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _dailyQuote = _quoteService.getDailyQuote();
     _adviceFuture = _getAdvice();
+    _awardDailyPoints();
+  }
+
+  Future<void> _awardDailyPoints() async {
+    final points = await PointsService().awardDailyEngagement();
+    if (points > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Welcome back! +$points points awarded! ✨'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
   }
 
   Future<AdviceItem?> _getAdvice() async {
@@ -102,7 +116,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
+
+                  // Points & Streak Banner
+                  FadeInAnimation(
+                    delay: step,
+                    duration: duration,
+                    child: StreamBuilder<Map<String, dynamic>>(
+                      stream: PointsService().getGamificationDataStream(),
+                      builder: (context, gamSnap) {
+                        final gData = gamSnap.data ?? {'totalPoints': 0, 'currentStreak': 0, 'monthlyLivesRemaining': 1};
+                        final pts = gData['totalPoints'] as int;
+                        final streak = gData['currentStreak'] as int;
+                        final lives = gData['monthlyLivesRemaining'] as int;
+                        return GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AchievementsScreen())),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.deepPurple[500]!, Colors.purple[400]!],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.deepPurple.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildBannerStat('⭐', '$pts', 'Points'),
+                                Container(width: 1, height: 30, color: Colors.white24),
+                                _buildBannerStat('🔥', '$streak', 'Streak'),
+                                Container(width: 1, height: 30, color: Colors.white24),
+                                _buildBannerStat('❤️', '$lives', 'Lives'),
+                                const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 14),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
                   // Daily Quote Card
                   FadeInAnimation(
@@ -144,11 +204,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
 
-                  // Tracker Card (New Entry Point)
+                  // Tracker & Calendar Cards
                   FadeInAnimation(
                     delay: step * 2,
                     duration: duration,
-                    child: Column(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.9,
                       children: [
                         DashboardFeatureCard(
                           title: "Distraction Tracker",
@@ -158,14 +224,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           iconColor: Colors.orange,
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DistractionStatsScreen())),
                         ),
-                        const SizedBox(height: 16),
                         DashboardFeatureCard(
-                          title: "Weekly Summary",
-                          subtitle: "Analyze your week",
-                          icon: Icons.summarize_outlined,
+                          title: "Calendar",
+                          subtitle: "Your Monthly Overview",
+                          icon: Icons.calendar_month_outlined,
                           gradient: AppGradients.primary,
                           iconColor: Theme.of(context).primaryColor,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DistractionSummaryScreen())),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarScreen())),
+                        ),
+                        DashboardFeatureCard(
+                          title: "Analytics & Insights",
+                          subtitle: "View your trends",
+                          icon: Icons.insights_rounded,
+                          gradient: AppGradients.purple,
+                          iconColor: Colors.purple,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AnalyticsScreen())),
+                        ),
+                        DashboardFeatureCard(
+                          title: "Vision Board",
+                          subtitle: "Visualize Goals",
+                          icon: Icons.auto_awesome_mosaic_rounded,
+                          gradient: AppGradients.purple,
+                          iconColor: Colors.purple,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisionBoardScreen())),
+                        ),
+                        DashboardFeatureCard(
+                          title: "Wellness Tools",
+                          subtitle: "Timer & Breathing",
+                          icon: Icons.spa_outlined,
+                          gradient: AppGradients.teal,
+                          iconColor: Colors.teal,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WellnessToolsScreen())),
                         ),
                       ],
                     ),
@@ -199,7 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: (isUnlocked ? Colors.purple : Colors.black).withOpacity(0.3),
+                                color: (isUnlocked ? Colors.purple : Colors.black).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -216,12 +305,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     size: 28,
                                   ),
                                   const SizedBox(width: 12),
-                                  Text(
-                                    isUnlocked ? 'Weekly Event Unlocked! ✨' : 'Weekly Event Progress',
-                                    style: GoogleFonts.outfit(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                  Expanded(
+                                    child: Text(
+                                      isUnlocked ? 'Weekly Event Unlocked! ✨' : 'Weekly Event Progress',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -231,7 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
                                   value: progress,
-                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                                   valueColor: AlwaysStoppedAnimation<Color?>(
                                     isUnlocked ? Colors.amber[400] : Colors.purple[300],
                                   ),
@@ -244,7 +336,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ? 'You reached your goals for $goalDays days! Enjoy your reward.' 
                                   : 'Meet your goals for ${stats['remainingDays']} more days to unlock this week\'s event.',
                                 style: GoogleFonts.outfit(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 14,
                                 ),
                               ),
@@ -255,20 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
 
-                  // Wellness Tools Card
-                  FadeInAnimation(
-                    delay: step * 3,
-                    duration: duration,
-                  child: DashboardFeatureCard(
-                    title: "Wellness Tools",
-                    subtitle: "Timer, Breathing & Quotes",
-                    icon: Icons.spa_outlined,
-                    gradient: AppGradients.teal,
-                    iconColor: Colors.teal,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WellnessToolsScreen())),
-                  ),
-                  ),
-                  const SizedBox(height: 24),
+
 
                   // Streak & Stats Row
                   StreamBuilder<DocumentSnapshot>(
@@ -289,7 +368,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               children: [
                                 Expanded(child: _buildStatCard('Focus Streak', '$focusStreak Days', Icons.local_fire_department_rounded, Colors.orange)),
                                 const SizedBox(width: 16),
-                                Expanded(child: _buildStatCard('Focus Time', '$minutes mins', Icons.timer_rounded, Colors.blue)),
+                                Expanded(
+                                  child: FutureBuilder<int>(
+                                    future: _firestoreService.getTodayFocusMinutes(),
+                                    builder: (context, focusSnapshot) {
+                                      final mins = focusSnapshot.data ?? minutes;
+                                      return _buildStatCard('Focus Time', '$mins mins', Icons.timer_rounded, Colors.blue);
+                                    }
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -359,6 +446,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildBannerStat(String emoji, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 4),
+            Text(value, style: GoogleFonts.outfit(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white,
+            )),
+          ],
+        ),
+        Text(label, style: GoogleFonts.outfit(
+          fontSize: 11, color: Colors.white70,
+        )),
+      ],
+    );
+  }
+
   Widget _buildQuoteCard() {
     return GlassContainer(
       color: Colors.white,
@@ -369,7 +477,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: Colors.amber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.format_quote_rounded, color: Colors.amber, size: 24),
@@ -400,7 +508,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.lightbulb_outline_rounded, color: Colors.blue, size: 24),
@@ -441,7 +549,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -454,11 +562,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -481,6 +593,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     List<FlSpot> spots = [];
     List<String> moodsPerDay = []; // For the dot painter
+    List<int> plottedDayIndices = []; // Keep track of which x indices have points
 
     for (int i = 0; i < last7Days.length; i++) {
       final date = last7Days[i];
@@ -498,9 +611,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final value = moodValueMap[latestMood] ?? 3.0;
         spots.add(FlSpot(i.toDouble(), value));
         moodsPerDay.add(latestMood);
-      } else {
-        moodsPerDay.add(''); // Placeholder for no data
+        plottedDayIndices.add(i);
       }
+      // If empty, we just don't add a spot, the line will connect the spots we do add.
     }
 
     if (spots.isEmpty) {
@@ -546,6 +659,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                interval: 1,
                 getTitlesWidget: (value, meta) {
                   int index = value.toInt();
                   if (index >= 0 && index < last7Days.length) {
@@ -563,12 +677,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     );
                   }
-                  return const Text('');
+                  return const SizedBox.shrink();
                 },
               ),
             ),
           ),
           borderData: FlBorderData(show: false),
+          minX: 0,
+          maxX: 6,
           minY: 0.5,
           maxY: 5.5,
           lineBarsData: [
@@ -581,10 +697,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
-                  // Find the emoji for this spot
-                  // Spot 'x' corresponds to index in last7Days, but spots might be fewer if days skipped
-                  int dayIndex = spot.x.toInt();
-                  final moodEmoji = moodsPerDay[dayIndex];
+                  // Index is the index of the spot in the spots list, so we can just use it to look up the emoji
+                  final moodEmoji = moodsPerDay[index];
                   return _EmojiDotPainter(emoji: moodEmoji, size: 20);
                 },
               ),
@@ -592,8 +706,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).primaryColor.withOpacity(0.3),
-                    Theme.of(context).primaryColor.withOpacity(0.0),
+                    Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                    Theme.of(context).primaryColor.withValues(alpha: 0.0),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

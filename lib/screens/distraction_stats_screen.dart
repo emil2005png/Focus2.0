@@ -4,6 +4,7 @@ import 'package:focus_app/services/firestore_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:focus_app/screens/log_distraction_screen.dart';
+import 'package:focus_app/screens/distraction_summary_screen.dart';
 import 'package:focus_app/services/advice_service.dart';
 
 class DistractionStatsScreen extends StatelessWidget {
@@ -20,6 +21,17 @@ class DistractionStatsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.insights_rounded, color: Colors.black87),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DistractionSummaryScreen()), // Wait, we need to import DistractionSummaryScreen
+              );
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -125,7 +137,7 @@ class DistractionStatsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.indigo.withOpacity(0.3),
+                            color: Colors.indigo.withValues(alpha: 0.3),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -227,7 +239,7 @@ class DistractionStatsScreen extends StatelessWidget {
                               if (timeStr.isNotEmpty)
                                 Text(
                                   timeStr,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                                 ),
                             ],
                           ),
@@ -268,7 +280,7 @@ class DistractionStatsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -280,7 +292,7 @@ class DistractionStatsScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -299,7 +311,7 @@ class DistractionStatsScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            style: TextStyle(color: Colors.grey[500], fontSize: 14),
           ),
         ],
       ),

@@ -48,15 +48,19 @@ class _ReflectionScreenState extends State<ReflectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.lightbulb_circle, size: 80, color: Colors.amber),
-                const SizedBox(height: 24),
+      appBar: AppBar(
+        title: const Text('Reflection'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lightbulb_circle, size: 80, color: Colors.amber),
+              const SizedBox(height: 24),
                 const Text(
                   'Daily Reflection',
                   style: TextStyle(
@@ -72,7 +76,7 @@ class _ReflectionScreenState extends State<ReflectionScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -105,7 +109,6 @@ class _ReflectionScreenState extends State<ReflectionScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 }

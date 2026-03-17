@@ -119,7 +119,7 @@ class JournalListScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -134,30 +134,82 @@ class JournalListScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        data['title'] ?? 'Untitled',
-                                        style: GoogleFonts.outfit( // Updated font
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (data['mood'] != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 8.0),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
                                         child: Text(
-                                          data['mood'], 
-                                          style: const TextStyle(fontSize: 20),
+                                          data['title'] ?? 'Untitled',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                    Icon(Icons.edit, size: 16, color: Colors.grey[400]),
-                                  ],
-                                ),
+                                      if (data['mood'] != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 8.0),
+                                          child: Text(
+                                            data['mood'], 
+                                            style: const TextStyle(fontSize: 20),
+                                          ),
+                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.edit, size: 20, color: Colors.blue[400]),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => JournalEntryScreen(entry: doc),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(width: 12),
+                                          IconButton(
+                                            icon: Icon(Icons.delete_outline, size: 20, color: Colors.red[400]),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('Delete Entry?'),
+                                                  content: const Text('This journal entry will be permanently deleted.'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: const Text('Cancel'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                      child: const Text('Delete'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ) ?? false;
+
+                                              if (confirm) {
+                                                firestoreService.deleteJournal(doc.id);
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('Entry deleted')),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 const SizedBox(height: 4),
                                 Text(
                                   formattedDate,
@@ -195,6 +247,7 @@ class JournalListScreen extends StatelessWidget {
       floatingActionButton: Padding( // Adjust FAB position
         padding: const EdgeInsets.only(bottom: 80),
         child: FloatingActionButton.extended(
+          heroTag: 'journal_list_fab',
           onPressed: () {
             Navigator.push(
               context,
