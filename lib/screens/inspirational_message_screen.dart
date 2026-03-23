@@ -112,7 +112,7 @@ class _InspirationalMessageScreenState extends State<InspirationalMessageScreen>
                     style: GoogleFonts.outfit( // Using a nice font
                       fontSize: 26,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87, 
+                      color: Theme.of(context).colorScheme.onSurface, 
                       height: 1.3,
                     ),
                   ),

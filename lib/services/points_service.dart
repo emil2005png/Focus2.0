@@ -154,7 +154,7 @@ class PointsService {
 
     if (lastResetMonth != currentMonthStr) {
       await _userRef.update({
-        'monthlyLivesRemaining': 1,
+        'monthlyLivesRemaining': 4,
         'lastLifeResetMonth': currentMonthStr,
       });
     }
@@ -270,12 +270,16 @@ class PointsService {
         .collection('users')
         .doc(_userId)
         .collection('vision_board_tasks')
-        .where('isCompleted', isEqualTo: true)
         .where('completedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(
             DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)))
         .get();
 
-    if (todayTasks.docs.length == dailyBonusThreshold) {
+    // The query above fetches all tasks completed today.
+    // We filter by isCompleted locally just to be absolutely safe, 
+    // avoiding the need for a composite index in Firestore.
+    final completedCount = todayTasks.docs.where((doc) => doc.data()['isCompleted'] == true).length;
+
+    if (completedCount == dailyBonusThreshold) {
       bonus = bonusDailyTasks;
     }
 
@@ -321,7 +325,7 @@ class PointsService {
       return Stream.value({
         'totalPoints': 0,
         'currentStreak': 0,
-        'monthlyLivesRemaining': 1,
+        'monthlyLivesRemaining': 4,
         'streakBrokenAt': 0,
         'unlockedSections': <String>[],
       });
@@ -332,7 +336,7 @@ class PointsService {
         return {
           'totalPoints': 0,
           'currentStreak': 0,
-          'monthlyLivesRemaining': 1,
+          'monthlyLivesRemaining': 4,
           'streakBrokenAt': 0,
           'unlockedSections': <String>[],
         };
@@ -342,9 +346,9 @@ class PointsService {
       // Auto-reset monthly life if needed
       final currentMonthStr = '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}';
       final lastResetMonth = data['lastLifeResetMonth'] as String?;
-      int lives = data['monthlyLivesRemaining'] ?? 1;
+      int lives = data['monthlyLivesRemaining'] ?? 4;
       if (lastResetMonth != currentMonthStr) {
-        lives = 1; // will be synced on next write
+        lives = 4; // will be synced on next write
       }
 
       return {

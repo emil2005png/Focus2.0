@@ -93,8 +93,12 @@ class CalendarProvider with ChangeNotifier {
     );
     await _firestoreService.addCalendarActivity(activity);
     
+    // Schedule notifications for all event types
     if (type == 'exam') {
       await _notificationService.scheduleExamCountdown(title, dateTime);
+    } else {
+      // Schedule a reminder for general events showing days remaining
+      await _notificationService.scheduleEventReminder(title, dateTime);
     }
   }
 

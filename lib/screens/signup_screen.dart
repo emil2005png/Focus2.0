@@ -14,7 +14,8 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController(); 
-  final _usernameController = TextEditingController(); // Added Username field
+  final _usernameController = TextEditingController();
+  final _ageController = TextEditingController(); // Age field
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -24,6 +25,7 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
      _nameController.dispose();
      _usernameController.dispose();
+     _ageController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -41,6 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
         final email = _emailController.text.trim();
         final password = _passwordController.text.trim();
         final name = _nameController.text.trim();
+        final age = int.tryParse(_ageController.text.trim());
 
         // Check if username is available
         bool isAvailable = await FirestoreService().isUsernameAvailable(username);
@@ -62,6 +65,7 @@ class _SignupScreenState extends State<SignupScreen> {
               email: email,
               username: username,
               fullName: name,
+              age: age,
             );
           }
         } catch (e) {
@@ -146,6 +150,22 @@ class _SignupScreenState extends State<SignupScreen> {
                         return 'Please enter your name';
                       }
                       return null; 
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _ageController,
+                    labelText: 'Age',
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your age';
+                      }
+                      final age = int.tryParse(value);
+                      if (age == null || age < 1 || age > 120) {
+                        return 'Please enter a valid age (1-120)';
+                      }
+                      return null;
                     },
                   ),
                   const SizedBox(height: 16),

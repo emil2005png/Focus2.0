@@ -65,10 +65,10 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
      return Scaffold(
       backgroundColor: Colors.grey[50], // Light background
       appBar: AppBar(
-        title: Text('Wellness Tools', style: GoogleFonts.outfit(color: Colors.black87)),
+        title: Text('Wellness Tools', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -144,7 +144,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
       style: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -164,7 +164,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -190,7 +190,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                    Text(
@@ -228,7 +228,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
              BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -254,7 +254,7 @@ class _WellnessToolsScreenState extends State<WellnessToolsScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                    Text(

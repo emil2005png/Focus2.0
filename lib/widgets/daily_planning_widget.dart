@@ -29,6 +29,27 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
     _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) setState(() {});
     });
+
+    // Auto-reschedule incomplete tasks from yesterday
+    _rescheduleIncomplete();
+  }
+
+  /// Auto-reschedule incomplete tasks and notify the user
+  Future<void> _rescheduleIncomplete() async {
+    try {
+      final count = await _firestoreService.rescheduleIncompleteTasks();
+      if (count > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$count incomplete task${count > 1 ? 's' : ''} rescheduled to today 📋'),
+            backgroundColor: Colors.indigo,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Auto-reschedule error: $e');
+    }
   }
 
   @override
@@ -165,7 +186,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                                     style: GoogleFonts.outfit(
                                       fontSize: 16,
                                       fontWeight: isExam ? FontWeight.bold : FontWeight.normal,
-                                      color: isExam ? Colors.redAccent : Colors.black87,
+                                      color: isExam ? Colors.redAccent : Theme.of(context).colorScheme.onSurface,
                                     ),
                                     textCapitalization: TextCapitalization.sentences,
                                   ),
@@ -420,7 +441,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                                     style: GoogleFonts.outfit(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -598,7 +619,7 @@ class _DailyPlanningWidgetState extends State<DailyPlanningWidget> {
                               fontWeight: task['isExam'] == true ? FontWeight.bold : FontWeight.normal,
                               color: isCompleted
                                   ? Colors.grey[400]
-                                  : (task['isExam'] == true ? Colors.redAccent : Colors.black87),
+                                  : (task['isExam'] == true ? Colors.redAccent : Theme.of(context).colorScheme.onSurface),
                               decoration: isCompleted
                                   ? TextDecoration.lineThrough
                                   : null,

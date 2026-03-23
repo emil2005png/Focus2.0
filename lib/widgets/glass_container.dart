@@ -6,7 +6,7 @@ class GlassContainer extends StatelessWidget {
   final Widget child;
   final double blur;
   final double opacity;
-  final Color color;
+  final Color? color;
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -17,7 +17,7 @@ class GlassContainer extends StatelessWidget {
     required this.child,
     this.blur = 10,
     this.opacity = 0.1,
-    this.color = Colors.white,
+    this.color,
     this.borderRadius,
     this.padding,
     this.margin,
@@ -27,6 +27,9 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final br = borderRadius ?? BorderRadius.circular(20);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final containerColor = color ?? (isDark ? Colors.white : Colors.white);
+    final containerOpacity = color == null && isDark ? 0.05 : opacity;
 
     Widget container = Container(
       margin: margin,
@@ -37,15 +40,15 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: opacity),
+              color: containerColor.withValues(alpha: containerOpacity),
               borderRadius: br,
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),

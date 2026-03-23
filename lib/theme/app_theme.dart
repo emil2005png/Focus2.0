@@ -27,6 +27,12 @@ class AppGradients {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient blue = LinearGradient(
+    colors: [Color(0xFF2D82E2), Color(0xFF00B4E0)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static LinearGradient glass = LinearGradient(
     colors: [
       Colors.white.withValues(alpha: 0.3),
@@ -132,7 +138,11 @@ class AppTheme {
       surface: darkSurfaceColor,
       brightness: Brightness.dark,
     ),
-    textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme),
+    textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).apply(
+      bodyColor: Colors.white,
+      displayColor: Colors.white,
+    ),
+    iconTheme: const IconThemeData(color: Colors.white),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       centerTitle: false,
@@ -144,5 +154,31 @@ class AppTheme {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       color: const Color(0xFF16213E), // Slightly lighter dark
     ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFF16213E),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
+      ),
+      contentPadding: const EdgeInsets.all(20),
+    ),
   );
+}
+
+extension ThemeColors on BuildContext {
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
+  Color get surfaceColor => isDarkMode ? const Color(0xFF16213E) : Colors.white;
+  Color get textColor => isDarkMode ? Colors.white : Theme.of(this).colorScheme.onSurface;
+  Color get subTextColor => isDarkMode ? Colors.white70 : Theme.of(this).colorScheme.onSurface.withValues(alpha: 0.6);
+  Color get dividerColor => isDarkMode ? Colors.white12 : Theme.of(this).colorScheme.onSurface.withValues(alpha: 0.12);
+  Color get glassColor => isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.white;
 }

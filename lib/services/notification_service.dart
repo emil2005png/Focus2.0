@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -13,8 +14,13 @@ class NotificationService {
   Future<void> init() async {
     // Initialize Timezones
     tz.initializeTimeZones();
-    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint('Error setting local timezone, falling back to UTC: $e');
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
     
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -31,9 +37,13 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidImplementation != null) {
-      await androidImplementation.requestNotificationsPermission();
-      // Also request exact alarm permission if needed for zonedSchedule
-      await androidImplementation.requestExactAlarmsPermission();
+      try {
+        await androidImplementation.requestNotificationsPermission();
+        // Also request exact alarm permission if needed for zonedSchedule
+        await androidImplementation.requestExactAlarmsPermission();
+      } catch (e) {
+        debugPrint('Error requesting notification permissions: $e');
+      }
     }
   }
 
@@ -230,5 +240,47 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime
     );
+  }
+
+  /// Schedule a reminder for a general event showing remaining days
+  Future<void> scheduleEventReminder(String eventTitle, DateTime eventDate) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
+    final daysRemaining = eventDay.difference(today).inDays;
+
+    if (daysRemaining < 0) return;
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'event_reminder_channel',
+      'Event Reminders',
+      channelDescription: 'Reminders for upcoming events',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Schedule for 9:00 AM on the day before
+    if (daysRemaining >= 1) {
+      final reminderDate = eventDay.subtract(const Duration(days: 1)).add(const Duration(hours: 9));
+      if (reminderDate.isAfter(now)) {
+        String body = daysRemaining == 1
+            ? "Tomorrow: $eventTitle 📌"
+            : "$daysRemaining days until $eventTitle 📌";
+
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          3000 + eventDate.hashCode,
+          'Event Reminder 📅',
+          body,
+          tz.TZDateTime.from(reminderDate, tz.local),
+          platformChannelSpecifics,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      }
+    }
   }
 }

@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 
 
-import 'package:focus_app/screens/journal_main_screen.dart';
-
 import 'package:focus_app/widgets/glass_container.dart';
 import 'package:focus_app/theme/app_theme.dart';
 
 import 'package:focus_app/screens/profile_screen.dart';
 import 'package:focus_app/screens/dashboard_screen.dart';
 import 'package:focus_app/screens/habit_garden_screen.dart';
-import 'package:focus_app/screens/achievements_screen.dart';
+import 'package:focus_app/screens/calendar_screen.dart';
+import 'package:focus_app/screens/focus_timer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,13 +23,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     DashboardScreen(),
+    CalendarScreen(),
+    FocusTimerScreen(),
     HabitGardenScreen(),
-    AchievementsScreen(),
-    JournalMainScreen(),
     ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
+    // Block navigation away from focus timer when it's running
+    if (FocusTimerScreen.isTimerRunning.value && index != 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Focus timer is running! Pause or stop it first. 🔒'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     setState(() {
       _selectedIndex = index;
     });
@@ -52,21 +63,26 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 16,
             right: 16,
             bottom: 16,
-            child: GlassContainer(
-              opacity: 0.9,
-              blur: 20,
-              borderRadius: BorderRadius.circular(30),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
-                  _buildNavItem(1, Icons.yard_rounded, Icons.yard_outlined, 'Garden'),
-                  _buildNavItem(2, Icons.emoji_events_rounded, Icons.emoji_events_outlined, 'Awards'),
-                  _buildNavItem(3, Icons.book_rounded, Icons.book_outlined, 'Journal'),
-                  _buildNavItem(4, Icons.person_rounded, Icons.person_outline, 'Profile'),
-                ],
-              ),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: FocusTimerScreen.isTimerRunning,
+              builder: (context, timerActive, child) {
+                return GlassContainer(
+                  opacity: 0.9,
+                  blur: 20,
+                  borderRadius: BorderRadius.circular(30),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(0, Icons.dashboard_rounded, Icons.dashboard_outlined, 'Home', timerActive),
+                      _buildNavItem(1, Icons.calendar_month_rounded, Icons.calendar_month_outlined, 'Plan', timerActive),
+                      _buildNavItem(2, Icons.timer_rounded, Icons.timer_outlined, 'Focus', timerActive),
+                      _buildNavItem(3, Icons.yard_rounded, Icons.yard_outlined, 'Garden', timerActive),
+                      _buildNavItem(4, Icons.person_rounded, Icons.person_outline, 'Profile', timerActive),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -74,8 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData selectedIcon, IconData unselectedIcon, String label) {
+  Widget _buildNavItem(int index, IconData selectedIcon, IconData unselectedIcon, String label, bool timerActive) {
     final isSelected = _selectedIndex == index;
+    // Dim non-Focus tabs when timer is active
+    final isLocked = timerActive && index != 2;
     return GestureDetector(
       onTap: () => _onItemTapped(index),
       child: AnimatedContainer(
@@ -90,7 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               isSelected ? selectedIcon : unselectedIcon,
-              color: isSelected ? AppTheme.primaryColor : Colors.grey[400],
+              color: isLocked
+                  ? Colors.grey[300]
+                  : (isSelected ? AppTheme.primaryColor : Colors.grey[400]),
               size: 24,
             ),
             if (isSelected)
@@ -99,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
+                  color: isLocked ? Colors.grey[300] : AppTheme.primaryColor,
                 ),
               ),
           ],

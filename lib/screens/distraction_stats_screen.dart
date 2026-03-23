@@ -17,13 +17,13 @@ class DistractionStatsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50], // Light background
       appBar: AppBar(
-        title: Text('Distraction Stats', style: GoogleFonts.outfit(color: Colors.black87)),
+        title: Text('Distraction Stats', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         actions: [
           IconButton(
-            icon: const Icon(Icons.insights_rounded, color: Colors.black87),
+            icon: Icon(Icons.insights_rounded, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () {
               Navigator.push(
                 context,
@@ -174,6 +174,7 @@ class DistractionStatsScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildStatCard(
+                        context,
                         "Today's Time",
                         "$todayTotalMinutes min",
                         Icons.access_time_filled,
@@ -183,6 +184,7 @@ class DistractionStatsScreen extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildStatCard(
+                        context,
                         "Most Common",
                         mostFrequent,
                         Icons.warning_amber_rounded,
@@ -272,7 +274,7 @@ class DistractionStatsScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, {bool isSmallText = false}) {
+  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color, {bool isSmallText = false}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -280,7 +282,7 @@ class DistractionStatsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -303,7 +305,7 @@ class DistractionStatsScreen extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: isSmallText ? 18 : 24,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -393,7 +393,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
             child: Text(label,
                 style: GoogleFonts.outfit(
                     fontSize: 13,
-                    color: isBonus ? Colors.amber[800] : Colors.black87)),
+                    color: isBonus ? Colors.amber[800] : Theme.of(context).colorScheme.onSurface)),
           ),
           Text(points,
               style: GoogleFonts.outfit(

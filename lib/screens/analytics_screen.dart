@@ -36,7 +36,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black87,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           bottom: const TabBar(
             labelColor: Colors.indigo,
             unselectedLabelColor: Colors.grey,
@@ -85,7 +85,7 @@ class _WeeklyOverviewTab extends StatelessWidget {
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildInsightGrid(provider),
+                _buildInsightGrid(context, provider),
               ],
             ),
           ),
@@ -107,7 +107,7 @@ class _WeeklyOverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildInsightGrid(AnalyticsProvider provider) {
+  Widget _buildInsightGrid(BuildContext context, AnalyticsProvider provider) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -117,21 +117,25 @@ class _WeeklyOverviewTab extends StatelessWidget {
       childAspectRatio: 1.4,
       children: [
         _insightTile(
+            context,
             'Mood Trend',
             provider.getMoodTrend(),
             Icons.emoji_emotions,
             Colors.orange),
         _insightTile(
+            context,
             'Habit Consistency',
             provider.getHabitConsistency(),
             Icons.check_circle,
             Colors.green),
         _insightTile(
+            context,
             'Best Focus Day',
             provider.getBestFocusDay(),
             Icons.timer,
             Colors.blue),
         _insightTile(
+            context,
             'Screen Usage',
             provider.getScreenUsageChange(),
             Icons.app_blocking,
@@ -140,14 +144,14 @@ class _WeeklyOverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _insightTile(String label, String value, IconData icon, Color color) {
+  Widget _insightTile(BuildContext context, String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)
+            BoxShadow(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.02), blurRadius: 10)
           ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,14 +190,14 @@ class _ChartsTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            _buildChartSection(
+            _buildChartSection(context,
                 'Focus Activity', _FocusBarChart(provider)),
             const SizedBox(height: 24),
-            _buildChartSection('Mood Trends', _MoodLineChart(provider)),
+            _buildChartSection(context, 'Mood Trends', _MoodLineChart(provider)),
             const SizedBox(height: 24),
-            _buildChartSection('Habit Progress', _HabitPieChart(provider)),
+            _buildChartSection(context, 'Habit Progress', _HabitBarChart(provider)),
             const SizedBox(height: 24),
-            _buildChartSection('Screen Time',
+            _buildChartSection(context, 'Screen Time',
                 _ScreenTimeAreaChart(provider)),
           ],
         );
@@ -201,14 +205,14 @@ class _ChartsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildChartSection(String title, Widget chart) {
+  Widget _buildChartSection(BuildContext context, String title, Widget chart) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)
+            BoxShadow(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.02), blurRadius: 10)
           ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,78 +400,89 @@ class _MoodLineChart extends StatelessWidget {
   }
 }
 
-// --- Habit Pie Chart (Real Data) ---
-class _HabitPieChart extends StatelessWidget {
+// --- Habit Bar Chart (Weekly Completions) ---
+class _HabitBarChart extends StatelessWidget {
   final AnalyticsProvider provider;
-  const _HabitPieChart(this.provider);
+  const _HabitBarChart(this.provider);
 
   @override
   Widget build(BuildContext context) {
-    final habits = provider.weeklyHabits;
-    
-    if (habits.isEmpty) {
+    final dailyCompletions = provider.getHabitCompletionsPerDay();
+    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final hasData = dailyCompletions.any((v) => v > 0);
+
+    if (!hasData && provider.weeklyHabits.isEmpty) {
       return Center(
         child: Text('No habits created yet', style: TextStyle(color: Colors.grey[400])),
       );
     }
 
-    int completedToday = habits.where((h) => h.isCompletedToday).length;
-    int remaining = habits.length - completedToday;
-    
-    // Avoid showing a chart with all zeroes
-    if (completedToday == 0 && remaining == 0) {
-      return Center(
-        child: Text('No habit data', style: TextStyle(color: Colors.grey[400])),
-      );
-    }
+    final maxY = hasData
+        ? dailyCompletions.reduce((a, b) => a > b ? a : b) + 1
+        : 5.0;
 
-    return Row(
-      children: [
-        Expanded(
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: [
-                PieChartSectionData(
-                  value: completedToday.toDouble(),
-                  color: Colors.green,
-                  title: '$completedToday',
-                  titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  radius: 50,
-                ),
-                PieChartSectionData(
-                  value: remaining.toDouble().clamp(0.1, double.infinity), // Avoid zero
-                  color: Colors.grey[300]!,
-                  title: '$remaining',
-                  titleStyle: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 14),
-                  radius: 45,
-                ),
-              ],
+    return BarChart(
+      BarChartData(
+        maxY: maxY,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${rod.toY.toInt()} habits',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value == value.roundToDouble()) {
+                  return Text('${value.toInt()}', style: TextStyle(fontSize: 10, color: Colors.grey[600]));
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                int i = value.toInt();
+                if (i >= 0 && i < dayLabels.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(dayLabels[i], style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _legendItem(Colors.green, 'Completed ($completedToday)'),
-            const SizedBox(height: 8),
-            _legendItem(Colors.grey[300]!, 'Remaining ($remaining)'),
-          ],
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey[200]!, strokeWidth: 1),
         ),
-      ],
-    );
-  }
-
-  Widget _legendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 8),
-        Text(label, style: GoogleFonts.outfit(fontSize: 13)),
-      ],
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(7, (i) {
+          return BarChartGroupData(x: i, barRods: [
+            BarChartRodData(
+              toY: dailyCompletions[i],
+              color: Colors.green,
+              width: 16,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+            )
+          ]);
+        }),
+      ),
     );
   }
 }
@@ -481,16 +496,15 @@ class _ScreenTimeAreaChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final dailyScreenTime = provider.getScreenTimePerDay();
     final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final hasData = dailyScreenTime.any((v) => v > 0);
     
-    // Build spots only for days with data
+    // Always build spots for all 7 days (including zeros)
     List<FlSpot> spots = [];
     for (int i = 0; i < 7; i++) {
-      if (dailyScreenTime[i] > 0) {
-        spots.add(FlSpot(i.toDouble(), dailyScreenTime[i]));
-      }
+      spots.add(FlSpot(i.toDouble(), dailyScreenTime[i]));
     }
 
-    if (spots.isEmpty) {
+    if (!hasData) {
       return Center(
         child: Text('No screen time data this week', style: TextStyle(color: Colors.grey[400])),
       );

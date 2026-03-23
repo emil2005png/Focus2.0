@@ -406,7 +406,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                           style: GoogleFonts.outfit(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -550,7 +550,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -588,7 +588,7 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isCompletedToday ? Colors.green[800] : Colors.black87,
+                      color: isCompletedToday ? Colors.green[800] : Theme.of(context).colorScheme.onSurface,
                       decoration: isCompletedToday ? TextDecoration.lineThrough : null,
                     ),
                     maxLines: 2,
@@ -982,7 +982,7 @@ class EnergyMeterWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

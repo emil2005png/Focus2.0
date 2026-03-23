@@ -118,16 +118,24 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
   }
 
   Future<void> _toggleTask(VisionBoardTask task) async {
-    final updatedTask = task.copyWith(
+    final updatedTask = VisionBoardTask(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      createdAt: task.createdAt,
       isCompleted: !task.isCompleted,
       completedAt: !task.isCompleted ? DateTime.now() : null,
     );
     await _firestoreService.updateVisionBoardTask(updatedTask);
 
     if (updatedTask.isCompleted) {
-      final rewards = await _pointsService.awardTaskCompletion();
-      if (!mounted) return;
-      _showRewardFeedback(rewards['points'] as int? ?? 0, rewards['bonus'] as int? ?? 0);
+      try {
+        final rewards = await _pointsService.awardTaskCompletion();
+        if (!mounted) return;
+        _showRewardFeedback(rewards['points'] as int? ?? 0, rewards['bonus'] as int? ?? 0);
+      } catch (e) {
+        debugPrint('Failed to award points: \$e');
+      }
     }
   }
 
@@ -146,6 +154,103 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
     );
   }
 
+  /// Show bottom sheet to edit an existing vision board task
+  void _showEditTaskSheet(VisionBoardTask task) {
+    final titleController = TextEditingController(text: task.title);
+    final descController = TextEditingController(text: task.description ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: GlassContainer(
+          color: Colors.white,
+          opacity: 0.9,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit Vision Goal',
+                style: GoogleFonts.outfit(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Task Title',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (titleController.text.isNotEmpty) {
+                      final updatedTask = task.copyWith(
+                        title: titleController.text,
+                        description: descController.text,
+                      );
+                      _firestoreService.updateVisionBoardTask(updatedTask);
+                      Navigator.pop(context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Changes'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Delete a vision board task with confirmation
+  Future<void> _deleteTask(VisionBoardTask task) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Goal'),
+        content: Text('Are you sure you want to delete "${task.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _firestoreService.deleteVisionBoardTask(task.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,7 +259,7 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
         title: Text('Vision Board', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: CustomScrollView(
         slivers: [
@@ -208,7 +313,7 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
                       : FloatingActionButton.small(
                           onPressed: _pickImage,
                           backgroundColor: Colors.white.withValues(alpha: 0.9),
-                          child: const Icon(Icons.edit, color: Colors.black),
+                          child: Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurface),
                         ),
                 ),
               ],
@@ -319,47 +424,69 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
   }
 
   Widget _buildTaskCard(VisionBoardTask task) {
-    return GlassContainer(
-      color: Colors.white,
-      opacity: 0.8,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Checkbox(
-            value: task.isCompleted,
-            onChanged: (_) => _toggleTask(task),
-            activeColor: Colors.green,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                    color: task.isCompleted ? Colors.grey : Colors.black87,
-                  ),
-                ),
-                if (task.description != null && task.description!.isNotEmpty)
+    return Dismissible(
+      key: Key(task.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete_rounded, color: Colors.red),
+      ),
+      confirmDismiss: (_) async {
+        await _deleteTask(task);
+        return false; // Firestore stream handles removal
+      },
+      child: GlassContainer(
+        color: Colors.white,
+        opacity: 0.8,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Checkbox(
+              value: task.isCompleted,
+              onChanged: (_) => _toggleTask(task),
+              activeColor: Colors.green,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    task.description!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
+                    task.title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                      color: task.isCompleted ? Colors.grey : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-              ],
+                  if (task.description != null && task.description!.isNotEmpty)
+                    Text(
+                      task.description!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (task.isCompleted)
-            const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-        ],
+            if (task.isCompleted)
+              const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20)
+            else
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: Colors.grey[400], size: 20),
+                onPressed: () => _showEditTaskSheet(task),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -1,8 +1,0 @@
-﻿Analyzing Focus2.0...                                           
-
-  error - Undefined name 'GoogleFonts' - lib\screens\wellness_tools_screen.dart:66:46 - undefined_identifier
-  error - The name 'FocusTimerScreen' isn't a class - lib\screens\wellness_tools_screen.dart:84:34 - creation_with_non_type
-  error - Undefined name 'GoogleFonts' - lib\screens\wellness_tools_screen.dart:142:14 - undefined_identifier
-  error - Undefined name 'GoogleFonts' - lib\screens\wellness_tools_screen.dart:188:28 - undefined_identifier
-  error - Undefined name 'GoogleFonts' - lib\screens\wellness_tools_screen.dart:252:28 - undefined_identifier
-

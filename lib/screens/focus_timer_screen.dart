@@ -6,11 +6,14 @@ import 'package:focus_app/services/points_service.dart';
 import 'package:focus_app/models/focus_session.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:focus_app/services/notification_service.dart';
-import 'package:focus_app/services/quote_service.dart';
+
 
 
 class FocusTimerScreen extends StatefulWidget {
   const FocusTimerScreen({super.key});
+
+  /// Shared notifier so HomeScreen can block nav when timer is active
+  static final ValueNotifier<bool> isTimerRunning = ValueNotifier(false);
 
   @override
   State<FocusTimerScreen> createState() => _FocusTimerScreenState();
@@ -21,7 +24,6 @@ enum TimerMode { focus }
 class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
   final PointsService _pointsService = PointsService();
-  final QuoteService _quoteService = QuoteService();
   bool _hasAutoStarted = false;
   final String? _userId = FirebaseAuth.instance.currentUser?.uid;
 
@@ -56,36 +58,32 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     // Initialize durations
     _totalSessionDuration = ((_selectedFocusMinutes + _selectedBreakMinutes) * 60).toInt();
     _secondsRemaining = _totalSessionDuration;
-    _checkForDistractionAutostart();
+    _checkScreenTimeAutostart();
   }
 
-  Future<void> _checkForDistractionAutostart() async {
+  /// Only auto-start when user-inputted screen time >= 2 hours
+  Future<void> _checkScreenTimeAutostart() async {
     if (_hasAutoStarted || _isRunning) return;
 
-    final distractions = await _firestoreService.getTodayDistractions();
-    int totalMinutes = 0;
-    for (var d in distractions) {
-      totalMinutes += (d['durationMinutes'] as int? ?? 0);
-    }
-
-    if (totalMinutes >= 60 && mounted) {
-      setState(() {
-        _hasAutoStarted = true;
-      });
-      
-      _startTimer();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_quoteService.getRandomQuote()} (Distraction: ${totalMinutes}m)',
-            style: GoogleFonts.outfit(color: Colors.white),
+    try {
+      final screenTime = await _firestoreService.getTodayScreenTime();
+      if (screenTime >= 2.0 && mounted && !_hasAutoStarted) {
+        setState(() => _hasAutoStarted = true);
+        _startTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Screen time is ${screenTime.toStringAsFixed(1)}h — auto-starting a focus session! 📱➡️🎯',
+              style: GoogleFonts.outfit(color: Colors.white),
+            ),
+            backgroundColor: Colors.deepPurple,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: Theme.of(context).primaryColor,
-          duration: const Duration(seconds: 5),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      debugPrint('Screen time check error: $e');
     }
   }
 
@@ -93,8 +91,9 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     if (_timer != null) return;
     setState(() {
       _isRunning = true;
-      _isAlarmEnabled = true; // Auto-toggle alarm on
+      _isAlarmEnabled = true;
     });
+    FocusTimerScreen.isTimerRunning.value = true; // Notify HomeScreen
     _pulseController.repeat(reverse: true);
 
     // Schedule background alarm if focus portion is active
@@ -178,6 +177,19 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     _firestoreService.saveFocusSession(session);
     _firestoreService.updateFocusStats(session.actualFocusDuration.inMinutes, session.purpose);
     _pointsService.awardFocusSession(session.actualFocusDuration.inMinutes);
+
+    // Trigger a reminder notification after long focus sessions (>= 45 min)
+    final focusMinutes = session.actualFocusDuration.inMinutes;
+    if (focusMinutes >= 45) {
+      // Schedule a break reminder 5 minutes after session ends
+      NotificationService().scheduleAlarm(
+        1002,
+        'Take a Break! 🧘',
+        'You focused for $focusMinutes minutes. Time to rest, stretch, and hydrate! 💧',
+        DateTime.now().add(const Duration(minutes: 5)),
+      );
+    }
+
     _actualSecondsSpent = 0;
   }
 
@@ -188,6 +200,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     _pulseController.reset();
     NotificationService().cancel(1001); // Cancel scheduled alarm on stop/pause
     setState(() => _isRunning = false);
+    FocusTimerScreen.isTimerRunning.value = false; // Notify HomeScreen
   }
 
   void _resetTimer() {
@@ -285,12 +298,13 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
         }
       },
       child: Scaffold(
-        backgroundColor: _isRunning ? Colors.black.withValues(alpha: 0.05) : Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: _isRunning ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05) : Theme.of(context).scaffoldBackgroundColor,
       appBar: _isRunning ? null : AppBar( // Hide app bar during session for distraction-free
-        title: Text('Focus Timer', style: GoogleFonts.outfit(color: Colors.black87)),
+        automaticallyImplyLeading: false,
+        title: Text('Focus Timer', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
         actions: [
           IconButton(
             icon: Icon(_autoStartBreak ? Icons.flash_on : Icons.flash_off, size: 20),
@@ -327,7 +341,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
                     style: GoogleFonts.outfit(
                       fontSize: _isRunning ? 24 : 16,
                       fontWeight: _isRunning ? FontWeight.bold : FontWeight.normal,
-                      color: _isRunning ? primaryColor : Colors.black87,
+                      color: _isRunning ? primaryColor : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -473,6 +487,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
                     child: Text("CANCEL SESSION", style: GoogleFonts.outfit(color: Colors.grey)),
                   ),
                 ),
+                const SizedBox(height: 100), // Bottom padding for floating nav bar
               ],
             ),
           ),

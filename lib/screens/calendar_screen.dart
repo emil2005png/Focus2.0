@@ -160,10 +160,11 @@ class CalendarScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Calendar', style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.bold)),
+        automaticallyImplyLeading: false,
+        title: Text('Calendar', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: Column(
         children: [
@@ -177,7 +178,7 @@ class CalendarScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Daily Overview',
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ],
             ),
@@ -186,12 +187,15 @@ class CalendarScreen extends StatelessWidget {
           const Expanded(child: _EventListWidget()),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showAddEditDialog(context),
-        heroTag: 'calendar_fab',
-        backgroundColor: Colors.indigo,
-        elevation: 4,
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: FloatingActionButton(
+          onPressed: () => showAddEditDialog(context),
+          heroTag: 'calendar_fab',
+          backgroundColor: Colors.indigo,
+          elevation: 4,
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
       ),
     );
   }
@@ -211,7 +215,7 @@ class _CalendarWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -387,11 +391,31 @@ class _EventListWidget extends StatelessWidget {
         ),
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.grey),
-          onSelected: (value) {
+          onSelected: (value) async {
             if (value == 'edit') {
               CalendarScreen.showAddEditDialog(context, activity: event);
             } else if (value == 'delete') {
-              provider.deleteActivity(event.id);
+              // Show confirmation dialog before deleting
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Event'),
+                  content: Text('Are you sure you want to delete "${event.title}"?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                provider.deleteActivity(event.id);
+              }
             }
           },
           itemBuilder: (context) => [

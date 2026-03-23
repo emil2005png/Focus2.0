@@ -210,7 +210,7 @@ class AnalyticsProvider with ChangeNotifier {
     return dailyMoods;
   }
 
-  /// Screen time per day of the week
+  /// Screen time per day of the week (includes zero-value days)
   List<double> getScreenTimePerDay() {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
@@ -226,6 +226,27 @@ class AnalyticsProvider with ChangeNotifier {
     }
     
     return dailyScreenTime;
+  }
+
+  /// Habit completions per day of the week (Mon=0 to Sun=6)
+  List<double> getHabitCompletionsPerDay() {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+    
+    List<double> dailyCompletions = List.filled(7, 0.0);
+    
+    for (var habit in _weeklyHabits) {
+      for (var date in habit.completedDates) {
+        final d = DateTime(date.year, date.month, date.day);
+        final s = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        int dayIndex = d.difference(s).inDays;
+        if (dayIndex >= 0 && dayIndex < 7) {
+          dailyCompletions[dayIndex] += 1;
+        }
+      }
+    }
+    return dailyCompletions;
   }
 
   String getWeeklySummary() {

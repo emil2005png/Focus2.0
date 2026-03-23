@@ -30,10 +30,10 @@ class _QuoteScreenState extends State<QuoteScreen> {
      return Scaffold(
       backgroundColor: Colors.amber[50],
       appBar: AppBar(
-        title: Text('Daily Inspiration', style: GoogleFonts.outfit(color: Colors.black87)),
+        title: Text('Daily Inspiration', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: Padding(
         padding: const EdgeInsets.all(32.0),
@@ -47,7 +47,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
               textAlign: TextAlign.center,
               style: GoogleFonts.patrickHand(
                 fontSize: 32,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
                 height: 1.3,
               ),
             ),
@@ -58,7 +58,7 @@ class _QuoteScreenState extends State<QuoteScreen> {
               label: const Text("New Quote"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
-                foregroundColor: Colors.black87,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               ),

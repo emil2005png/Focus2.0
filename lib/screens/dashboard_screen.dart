@@ -6,14 +6,13 @@ import 'package:focus_app/services/firestore_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:focus_app/screens/calendar_screen.dart';
 import 'package:focus_app/screens/analytics_screen.dart';
 import 'package:focus_app/screens/achievements_screen.dart';
+import 'package:focus_app/screens/journal_main_screen.dart';
 
 import 'package:focus_app/screens/distraction_stats_screen.dart';
 
 import 'package:focus_app/services/advice_service.dart';
-import 'package:focus_app/screens/wellness_tools_screen.dart';
 
 import 'package:focus_app/widgets/fade_in_animation.dart';
 import 'package:focus_app/widgets/glass_container.dart';
@@ -92,28 +91,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   FadeInAnimation(
                     duration: duration,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('EEEE, MMM d').format(DateTime.now()),
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Welcome Back!',
-                          style: GoogleFonts.outfit(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ],
+                    child: StreamBuilder<DocumentSnapshot>(
+                      stream: _firestoreService.getUserProfile(),
+                      builder: (context, profileSnap) {
+                        final profileData = profileSnap.data?.data() as Map<String, dynamic>?;
+                        final username = profileData?['username'] as String? ?? '';
+                        final greeting = username.isNotEmpty
+                            ? 'Welcome Back, $username!'
+                            : 'Welcome Back!';
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('EEEE, MMM d').format(DateTime.now()),
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              greeting,
+                              style: GoogleFonts.outfit(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -217,20 +227,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       childAspectRatio: 0.9,
                       children: [
                         DashboardFeatureCard(
-                          title: "Distraction Tracker",
-                          subtitle: "Log & View Insights",
-                          icon: Icons.track_changes_outlined,
-                          gradient: AppGradients.orange,
-                          iconColor: Colors.orange,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DistractionStatsScreen())),
+                          title: "Journal & Reflection",
+                          subtitle: "Record your thoughts",
+                          icon: Icons.book_rounded,
+                          gradient: AppGradients.blue,
+                          iconColor: Colors.blue,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const JournalMainScreen())),
                         ),
                         DashboardFeatureCard(
-                          title: "Calendar",
-                          subtitle: "Your Monthly Overview",
-                          icon: Icons.calendar_month_outlined,
-                          gradient: AppGradients.primary,
-                          iconColor: Theme.of(context).primaryColor,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarScreen())),
+                          title: "Achievements",
+                          subtitle: "View your awards",
+                          icon: Icons.emoji_events_rounded,
+                          gradient: AppGradients.orange,
+                          iconColor: Colors.orange,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AchievementsScreen())),
                         ),
                         DashboardFeatureCard(
                           title: "Analytics & Insights",
@@ -244,17 +254,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           title: "Vision Board",
                           subtitle: "Visualize Goals",
                           icon: Icons.auto_awesome_mosaic_rounded,
-                          gradient: AppGradients.purple,
-                          iconColor: Colors.purple,
+                          gradient: AppGradients.teal,
+                          iconColor: Colors.teal,
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisionBoardScreen())),
                         ),
                         DashboardFeatureCard(
-                          title: "Wellness Tools",
-                          subtitle: "Timer & Breathing",
-                          icon: Icons.spa_outlined,
-                          gradient: AppGradients.teal,
-                          iconColor: Colors.teal,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WellnessToolsScreen())),
+                          title: "Distraction Tracker",
+                          subtitle: "Log & View Insights",
+                          icon: Icons.track_changes_outlined,
+                          gradient: AppGradients.orange,
+                          iconColor: Colors.orange,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DistractionStatsScreen())),
                         ),
                       ],
                     ),
@@ -288,7 +298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: (isUnlocked ? Colors.purple : Colors.black).withValues(alpha: 0.3),
+                                color: (isUnlocked ? Colors.purple : Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -399,6 +409,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 16),
+                            // Active Days Streak & Screen Time row
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FutureBuilder<int>(
+                                    future: _firestoreService.getActiveDaysStreak(),
+                                    builder: (context, streakSnap) {
+                                      final activeDays = streakSnap.data ?? 0;
+                                      return _buildStatCard('Active Days', '$activeDays Days', Icons.calendar_today_rounded, Colors.deepPurple);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: FutureBuilder<double>(
+                                    future: _firestoreService.getTodayScreenTime(),
+                                    builder: (context, screenSnap) {
+                                      final screenTime = screenSnap.data ?? 0.0;
+                                      return _buildStatCard('Screen Time', '${screenTime.toStringAsFixed(1)}h', Icons.phone_android_rounded, Colors.red);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       );
@@ -436,6 +471,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // Contextual Feedback Messages
+                  FadeInAnimation(
+                    delay: step * 6,
+                    duration: duration,
+                    child: FutureBuilder<Map<String, dynamic>>(
+                      future: _getContextualFeedback(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        final feedback = snapshot.data!;
+                        final message = feedback['message'] as String;
+                        final icon = feedback['icon'] as IconData;
+                        final color = feedback['color'] as Color;
+
+                        return GlassContainer(
+                          color: Colors.white,
+                          opacity: 0.8,
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(icon, color: color, size: 24),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Daily Insight', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[600])),
+                                    const SizedBox(height: 4),
+                                    Text(message, style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurface)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
                   const SizedBox(height: 100), // Bottom padding
                 ],
               ),
@@ -523,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -560,7 +644,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: GoogleFonts.outfit(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -718,6 +802,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  /// Generate contextual feedback based on user activity and progress
+  Future<Map<String, dynamic>> _getContextualFeedback() async {
+    try {
+      final focusMins = await _firestoreService.getTodayFocusMinutes();
+      final screenTime = await _firestoreService.getTodayScreenTime();
+      final streak = await _firestoreService.getActiveDaysStreak();
+      final moods = await _firestoreService.getMoodsForLast7Days();
+
+      // Priority-based feedback selection
+      if (streak >= 7) {
+        return {
+          'message': 'Incredible $streak-day streak! 🔥 You\'re building great habits.',
+          'icon': Icons.local_fire_department_rounded,
+          'color': Colors.orange,
+        };
+      }
+
+      if (focusMins >= 60) {
+        return {
+          'message': 'Outstanding focus today — $focusMins minutes! Keep up the great work. 🎯',
+          'icon': Icons.psychology_rounded,
+          'color': Colors.blue,
+        };
+      }
+
+      if (screenTime > 4) {
+        return {
+          'message': 'Screen time is ${screenTime.toStringAsFixed(1)}h today. Consider taking a focus break! 📵',
+          'icon': Icons.phone_android_rounded,
+          'color': Colors.red,
+        };
+      }
+
+      if (moods.length >= 3) {
+        // Check mood trend
+        final moodScores = {'😊': 5, '🤩': 5, '😌': 4, '😐': 3, '😔': 2, '😰': 1, '😴': 2};
+        final recent = moods.take(3).map((m) => moodScores[m['mood'] ?? '😐'] ?? 3).toList();
+        final avg = recent.reduce((a, b) => a + b) / recent.length;
+        if (avg >= 4) {
+          return {
+            'message': 'Your mood has been positive lately! 🎉 Keep doing what makes you happy.',
+            'icon': Icons.sentiment_very_satisfied_rounded,
+            'color': Colors.green,
+          };
+        } else if (avg <= 2) {
+          return {
+            'message': 'You\'ve been feeling low. Try a short meditation or talk to someone you trust. 💙',
+            'icon': Icons.favorite_rounded,
+            'color': Colors.purple,
+          };
+        }
+      }
+
+      if (focusMins == 0) {
+        return {
+          'message': 'Start your day with a 25-minute focus session! Small steps lead to big wins. 💪',
+          'icon': Icons.timer_rounded,
+          'color': Colors.indigo,
+        };
+      }
+
+      return {
+        'message': 'You\'re making progress. Every small step counts! 🌟',
+        'icon': Icons.star_rounded,
+        'color': Colors.amber,
+      };
+    } catch (e) {
+      return {};
+    }
   }
 }
 

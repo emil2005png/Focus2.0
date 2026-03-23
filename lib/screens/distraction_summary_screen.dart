@@ -11,10 +11,10 @@ class DistractionSummaryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Weekly Summary', style: GoogleFonts.outfit(color: Colors.black87)),
+        title: Text('Weekly Summary', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: FirestoreService().getDistractionsForWeek(),
@@ -117,7 +117,7 @@ class DistractionSummaryScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -150,7 +150,7 @@ class DistractionSummaryScreen extends StatelessWidget {
                 Text(
                   value,
                   style: GoogleFonts.outfit(
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),

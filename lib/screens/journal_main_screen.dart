@@ -27,7 +27,7 @@ class _JournalMainScreenState extends State<JournalMainScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            title: Text('Journal Hub', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black87)),
+            title: Text('Journal Hub', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
             centerTitle: false,
@@ -157,7 +157,7 @@ class _JournalMainScreenState extends State<JournalMainScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -189,7 +189,7 @@ class _JournalMainScreenState extends State<JournalMainScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),

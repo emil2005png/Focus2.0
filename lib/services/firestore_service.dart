@@ -51,11 +51,13 @@ class FirestoreService {
     required String email,
     required String username,
     String? fullName,
+    int? age,
   }) async {
     await _usersCollection.doc(uid).set({
       'username': username,
       'email': email,
       'fullName': fullName,
+      'age': age,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -254,6 +256,8 @@ class FirestoreService {
         'totalFocusMinutes': currentTotal + minutes,
         'currentStreak': newStreak,
         'lastFocusDate': todayStr,
+        'totalFocusSessions': FieldValue.increment(1),
+        'lastSessionDurationMinutes': minutes,
       }, SetOptions(merge: true));
     });
   }
@@ -732,6 +736,77 @@ class FirestoreService {
     }
   }
 
+  /// Reschedule incomplete tasks from yesterday to today.
+  /// Returns the number of rescheduled tasks.
+  Future<int> rescheduleIncompleteTasks() async {
+    if (_userId == null) return 0;
+
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    final startOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day);
+    final endOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59);
+
+    final yesterdaySnap = await _db
+        .collection('users')
+        .doc(_userId)
+        .collection('daily_plans')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfYesterday))
+        .limit(1)
+        .get();
+
+    if (yesterdaySnap.docs.isEmpty) return 0;
+
+    final yesterdayPlan = DailyPlan.fromFirestore(yesterdaySnap.docs.first);
+    final incompleteTasks = yesterdayPlan.tasks
+        .where((t) => t['isCompleted'] != true && t['isExam'] != true)
+        .toList();
+
+    if (incompleteTasks.isEmpty) return 0;
+
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final todaySnap = await _db
+        .collection('users')
+        .doc(_userId)
+        .collection('daily_plans')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfToday))
+        .limit(1)
+        .get();
+
+    if (todaySnap.docs.isNotEmpty) {
+      final todayPlan = DailyPlan.fromFirestore(todaySnap.docs.first);
+      final existingTitles = todayPlan.tasks.map((t) => t['title']).toSet();
+      final newTasks = incompleteTasks
+          .where((t) => !existingTitles.contains(t['title']))
+          .toList();
+
+      if (newTasks.isEmpty) return 0;
+
+      final mergedTasks = [...todayPlan.tasks, ...newTasks];
+      await todaySnap.docs.first.reference.update({
+        'tasks': mergedTasks,
+        'priorities': mergedTasks.map((t) => t['title'] as String).toList(),
+      });
+      return newTasks.length;
+    } else {
+      final newPlan = DailyPlan(
+        id: '',
+        date: startOfToday,
+        priorities: incompleteTasks.map((t) => t['title'] as String).toList(),
+        tasks: incompleteTasks,
+      );
+      await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('daily_plans')
+          .add(newPlan.toFirestore());
+      return incompleteTasks.length;
+    }
+  }
+
   Future<void> updateDailyPlanTask(String planId, int taskIndex, bool isCompleted) async {
     if (_userId == null) return;
 
@@ -923,6 +998,45 @@ class FirestoreService {
     final sessions = await getTodayFocusSessions();
     int totalSeconds = sessions.fold(0, (acc, s) => acc + s.actualFocusDuration.inSeconds);
     return totalSeconds ~/ 60;
+  }
+
+  // --- Get today's screen time from health log ---
+  Future<double> getTodayScreenTime() async {
+    if (_userId == null) return 0.0;
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final snapshot = await _healthLogsCollection
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data() as Map<String, dynamic>;
+        return (data['screenTimeHours'] ?? 0.0).toDouble();
+      }
+      return 0.0;
+    } catch (e) {
+      debugPrint('Error getting today screen time: $e');
+      return 0.0;
+    }
+  }
+
+  // --- Calculate active days streak (consecutive days with any activity) ---
+  Future<int> getActiveDaysStreak() async {
+    if (_userId == null) return 0;
+    try {
+      final snapshot = await _userDoc.get();
+      if (!snapshot.exists) return 0;
+      final data = snapshot.data() as Map<String, dynamic>;
+      return data['currentStreak'] ?? 0;
+    } catch (e) {
+      debugPrint('Error getting active days streak: $e');
+      return 0;
+    }
   }
 }
 

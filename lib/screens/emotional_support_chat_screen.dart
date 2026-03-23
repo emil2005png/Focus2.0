@@ -151,7 +151,7 @@ class _EmotionalSupportChatScreenState extends State<EmotionalSupportChatScreen>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -164,7 +164,7 @@ class _EmotionalSupportChatScreenState extends State<EmotionalSupportChatScreen>
                           Text(
                             message['text'],
                             style: GoogleFonts.outfit(
-                              color: isUser ? Colors.white : (isError ? Colors.red[700] : Colors.black87),
+                              color: isUser ? Colors.white : (isError ? Colors.red[700] : Theme.of(context).colorScheme.onSurface),
                               fontSize: 16,
                               height: 1.4,
                             ),
@@ -220,7 +220,7 @@ class _EmotionalSupportChatScreenState extends State<EmotionalSupportChatScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -268,7 +268,7 @@ class _EmotionalSupportChatScreenState extends State<EmotionalSupportChatScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
             blurRadius: 15,
             offset: const Offset(0, -5),
           ),

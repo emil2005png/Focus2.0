@@ -17,7 +17,7 @@ class JournalListScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            title: Text('Journal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black87)),
+            title: Text('Journal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
             centerTitle: false,
@@ -119,7 +119,7 @@ class JournalListScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -226,7 +226,7 @@ class JournalListScreen extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.merriweather( // Serif for content
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     height: 1.5,
                                   ),
                                 ),
@@ -256,7 +256,7 @@ class JournalListScreen extends StatelessWidget {
           },
           label: const Text('New Entry'),
           icon: const Icon(Icons.create),
-          backgroundColor: Colors.black87,
+          backgroundColor: Theme.of(context).colorScheme.onSurface,
           foregroundColor: Colors.white,
         ),
       ),

@@ -48,10 +48,10 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: Colors.blue[50],
       appBar: AppBar(
-        title: Text('Breathing Exercise', style: GoogleFonts.outfit(color: Colors.black87)),
+        title: Text('Breathing Exercise', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: Center(
         child: Column(
