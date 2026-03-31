@@ -278,9 +278,11 @@ class _VisionBoardScreenState extends State<VisionBoardScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        image: imageUrl != null
+                        image: imageUrl != null && imageUrl.isNotEmpty
                             ? DecorationImage(
-                                image: NetworkImage(imageUrl),
+                                image: imageUrl.startsWith('http') 
+                                  ? NetworkImage(imageUrl) as ImageProvider
+                                  : FileImage(File(imageUrl)),
                                 fit: BoxFit.cover,
                               )
                             : null,

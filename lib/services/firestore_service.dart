@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:focus_app/models/calendar_activity.dart';
 import 'package:focus_app/models/daily_plan.dart';
 import 'package:focus_app/models/habit.dart';
@@ -14,7 +15,7 @@ import 'package:focus_app/models/focus_session.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   String? get _userId => FirebaseAuth.instance.currentUser?.uid;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+
 
   // Collection References
   CollectionReference get _usersCollection => _db.collection('users');
@@ -39,9 +40,11 @@ class FirestoreService {
           .limit(1)
           .get();
       return result.docs.isEmpty;
-    } catch (e) {
-      debugPrint('Error checking username: $e');
-      return false; // Assume taken on error to be safe, or handle differently
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw Exception('Firestore Permission Denied. Please update your Firebase Rules to allow reading the "users" collection.');
+      }
+      rethrow;
     }
   }
 
@@ -130,7 +133,14 @@ class FirestoreService {
 
   // Update user profile (creates if not exists)
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    await _userDoc.set(data, SetOptions(merge: true));
+    try {
+      await _userDoc.set(data, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw Exception('Firestore Permission Denied. Please update your Firebase Rules to allow writing to your user document.');
+      }
+      rethrow;
+    }
   }
 
   // Upload profile image
@@ -138,39 +148,21 @@ class FirestoreService {
     if (_userId == null) throw Exception('User not logged in');
     
     try {
-      final String filePath = 'user_profiles/$_userId.jpg';
-      debugPrint('Attempting to upload to: $filePath');
-      
-      final Reference storageRef = _storage.ref().child(filePath);
-      
-      // Set metadata (optional but good practice)
-      final SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
-
-      final UploadTask uploadTask = storageRef.putFile(imageFile, metadata);
-      
-      // Listen to stream for debug
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        debugPrint('Upload state: ${snapshot.state}, bytes: ${snapshot.bytesTransferred}');
-      }, onError: (e) {
-        debugPrint('Upload stream error: $e');
-      });
-
-      final TaskSnapshot snapshot = await uploadTask;
-      debugPrint('Upload finished. State: ${snapshot.state}');
-
-      if (snapshot.state == TaskState.success) {
-        final String downloadUrl = await storageRef.getDownloadURL();
-        debugPrint('Got download URL: $downloadUrl');
-        
-        // Update Firestore with new photo URL
-        await updateUserProfile({'photoUrl': downloadUrl});
-        return downloadUrl;
-      } else {
-        throw Exception('Upload failed with state: ${snapshot.state}');
+      final directory = await getApplicationDocumentsDirectory();
+      final userProfilesDir = Directory('${directory.path}/user_profiles');
+      if (!await userProfilesDir.exists()) {
+        await userProfilesDir.create(recursive: true);
       }
+      
+      final String filePath = '${userProfilesDir.path}/$_userId.jpg';
+      await imageFile.copy(filePath);
+      
+      // Update Firestore with new photo URL (saving local path)
+      await updateUserProfile({'photoUrl': filePath});
+      return filePath;
     } catch (e) {
       debugPrint('Detailed upload error: $e');
-      rethrow;
+      throw Exception('Failed to save profile image locally.');
     }
   }
   // --- Journals ---
@@ -692,6 +684,7 @@ class FirestoreService {
       'remainingDays': 5 - goalDays,
     };
   }
+
   // --- Daily Plan Methods ---
 
   Stream<DailyPlan?> getDailyPlanStream(DateTime date) {
@@ -886,26 +879,21 @@ class FirestoreService {
     if (_userId == null) throw Exception('User not logged in');
     
     try {
-      final String filePath = 'vision_boards/$_userId.jpg';
-      final Reference storageRef = _storage.ref().child(filePath);
-      
-      final SettableMetadata metadata = SettableMetadata(contentType: 'image/jpeg');
-      final UploadTask uploadTask = storageRef.putFile(imageFile, metadata);
-      
-      final TaskSnapshot snapshot = await uploadTask;
-      
-      if (snapshot.state == TaskState.success) {
-        final String downloadUrl = await storageRef.getDownloadURL();
-        
-        // Update Firestore with new vision board URL
-        await updateUserProfile({'visionBoardUrl': downloadUrl});
-        return downloadUrl;
-      } else {
-        throw Exception('Upload failed');
+      final directory = await getApplicationDocumentsDirectory();
+      final visionBoardsDir = Directory('${directory.path}/vision_boards');
+      if (!await visionBoardsDir.exists()) {
+        await visionBoardsDir.create(recursive: true);
       }
+      
+      final String filePath = '${visionBoardsDir.path}/$_userId.jpg';
+      await imageFile.copy(filePath);
+      
+      // Update Firestore with new vision board URL (saving local path)
+      await updateUserProfile({'visionBoardUrl': filePath});
+      return filePath;
     } catch (e) {
       debugPrint('Vision board upload error: $e');
-      rethrow;
+      throw Exception('Failed to save vision board image locally.');
     }
   }
 
@@ -952,11 +940,22 @@ class FirestoreService {
     if (_userId == null) return [];
     final snapshot = await _db.collection('focus_sessions')
         .where('userId', isEqualTo: _userId)
-        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .orderBy('timestamp')
         .get();
-    return snapshot.docs.map((doc) => doc.data()).toList();
+        
+    final docs = snapshot.docs.map((doc) => doc.data()).toList();
+    docs.removeWhere((doc) {
+      if (doc['timestamp'] == null && doc['startTime'] == null) return true;
+      final ts = (doc['timestamp'] as Timestamp?)?.toDate() ?? (doc['startTime'] as Timestamp).toDate();
+      return ts.isBefore(start) || ts.isAfter(end);
+    });
+    
+    docs.sort((a, b) {
+       final aTime = (a['timestamp'] as Timestamp?)?.toDate() ?? (a['startTime'] as Timestamp).toDate();
+       final bTime = (b['timestamp'] as Timestamp?)?.toDate() ?? (b['startTime'] as Timestamp).toDate();
+       return aTime.compareTo(bTime);
+    });
+    
+    return docs;
   }
 
   Stream<List<CalendarActivity>> getExams() {
@@ -986,11 +985,13 @@ class FirestoreService {
     
     final snapshot = await _db.collection('focus_sessions')
         .where('userId', isEqualTo: _userId)
-        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .orderBy('startTime', descending: true)
         .get();
         
-    return snapshot.docs.map((doc) => FocusSession.fromFirestore(doc)).toList();
+    final allSessions = snapshot.docs.map((doc) => FocusSession.fromFirestore(doc)).toList();
+    final todaySessions = allSessions.where((s) => s.startTime.isAfter(startOfDay) || s.startTime.isAtSameMomentAs(startOfDay)).toList();
+    
+    todaySessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+    return todaySessions;
   }
 
   // Get total focus minutes for today
@@ -1038,5 +1039,67 @@ class FirestoreService {
       return 0;
     }
   }
-}
 
+  // --- MOCK DATA GENERATOR ---
+  Future<void> generateMockData() async {
+    if (_userId == null) return;
+    
+    final now = DateTime.now();
+    for (int i = 0; i < 7; i++) {
+      final date = now.subtract(Duration(days: i));
+      final dateString = date.toIso8601String().split('T')[0];
+      
+      // 1. Mood
+      final List<String> emojis = ['😊', '🤩', '😌', '😐', '😔', '😰'];
+      final List<String> moodNames = ['Happy', 'Excited', 'Calm', 'Neutral', 'Sad', 'Anxious'];
+      int moodIndex = (date.day % emojis.length);
+      await _moodsCollection.add({
+        'moodIndex': moodIndex,
+        'mood': emojis[moodIndex],
+        'moodName': moodNames[moodIndex],
+        'timestamp': Timestamp.fromDate(date),
+        'date': dateString,
+      });
+
+      // 2. Health Log
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      await _healthLogsCollection.doc(dateString).set({
+        'date': Timestamp.fromDate(startOfDay),
+        'waterGlasses': 4 + (i % 4),
+        'exerciseMinutes': 15 + (i * 5),
+        'sleepHours': 6.0 + (i % 3),
+        'screenTimeHours': 2.0 + (i % 4),
+        'mood': emojis[moodIndex],
+      });
+
+      // 3. Focus Session
+      await _db.collection('focus_sessions').add({
+        'userId': _userId,
+        'startTime': Timestamp.fromDate(date.subtract(const Duration(hours: 1))),
+        'timestamp': Timestamp.fromDate(date), 
+        'durationMinutes': 25 + (i * 10),
+        'actualFocusDuration': (25 + (i * 10)) * 60,
+        'isCompleted': true,
+        'purpose': 'Mock Session $i',
+      });
+    }
+
+    // 4. Habit
+    await _habitsCollection.add({
+      'name': 'Read 10 Pages',
+      'icon': 'book',
+      'color': '#4CAF50',
+      'frequency': 'daily',
+      'reminderTime': null,
+      'createdAt': Timestamp.fromDate(now.subtract(const Duration(days: 7))),
+      'completedDates': List.generate(5, (i) {
+         final d = now.subtract(Duration(days: i));
+         return Timestamp.fromDate(DateTime(d.year, d.month, d.day));
+      }),
+      'currentStreak': 5,
+      'longestStreak': 5,
+    });
+    
+    debugPrint('Mock data generated successfully!');
+  }
+}

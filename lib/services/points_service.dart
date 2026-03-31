@@ -230,6 +230,24 @@ class PointsService {
   // ═══════════════════════════════════════════════════════════
   //  AWARD HELPERS — Each action type
   // ═══════════════════════════════════════════════════════════
+  Future<bool> _hasAwardedToday(String reasonPrefix) async {
+    if (_userId == null) return false;
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    
+    // Check points history for today
+    final snapshot = await _userRef.collection('point_history')
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+        .get();
+        
+    for (var doc in snapshot.docs) {
+      final reason = doc.data()['reason'] as String? ?? '';
+      if (reason.startsWith(reasonPrefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<Map<String, dynamic>> awardMoodCheckIn() async {
     final pts = await addPoints(pointsMoodCheckIn, 'Daily Mood Check-in 😊');
     final streakResult = await checkAndUpdateStreak();
@@ -237,15 +255,30 @@ class PointsService {
   }
 
   Future<Map<String, dynamic>> awardHabitCompletion(String habitName) async {
+    final alreadyAwarded = await _hasAwardedToday('Completed: $habitName');
+    if (alreadyAwarded) return {'points': 0, 'bonus': 0};
+
     final pts = await addPoints(pointsHabitComplete, 'Completed: $habitName 🌱');
     final streakResult = await checkAndUpdateStreak();
     return {'points': pointsHabitComplete, 'total': pts, ...streakResult};
   }
 
-  Future<Map<String, dynamic>> awardHealthLog() async {
-    final pts = await addPoints(pointsHealthLog, 'Health Log Saved 💪');
+  Future<Map<String, dynamic>> awardHealthLog({
+    required int waterGlasses,
+    required int exerciseMinutes,
+    required double screenTimeHours,
+  }) async {
+    final alreadyAwarded = await _hasAwardedToday('Health Log Saved');
+    if (alreadyAwarded) return {'points': 0, 'bonus': 0};
+
+    int earnedPoints = 10; // Base points for logging
+    earnedPoints += waterGlasses * 2; // +2 per glass
+    earnedPoints += (exerciseMinutes ~/ 15) * 5; // +5 per 15 min exercise
+    if (screenTimeHours < 4) earnedPoints += 10; // Bonus for low screen time
+
+    final pts = await addPoints(earnedPoints, 'Health Log Saved 💪');
     final streakResult = await checkAndUpdateStreak();
-    return {'points': pointsHealthLog, 'total': pts, ...streakResult};
+    return {'points': earnedPoints, 'total': pts, ...streakResult};
   }
 
   Future<Map<String, dynamic>> awardFocusSession(int minutes) async {

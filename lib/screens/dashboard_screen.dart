@@ -769,8 +769,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderData: FlBorderData(show: false),
           minX: 0,
           maxX: 6,
-          minY: 0.5,
-          maxY: 5.5,
+          minY: 0,
+          maxY: 6,
           lineBarsData: [
             LineChartBarData(
               spots: spots,

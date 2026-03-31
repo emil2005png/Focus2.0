@@ -260,9 +260,13 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () async {
+                        onPressed: currentLog != null ? null : () async {
                           await _firestoreService.updateDailyHealthLog(DateTime.now(), sleep, exercise, water, screenTime);
-                          await _pointsService.awardHealthLog();
+                          await _pointsService.awardHealthLog(
+                            waterGlasses: water,
+                            exerciseMinutes: exercise,
+                            screenTimeHours: screenTime,
+                          );
                           if (context.mounted) {
                             Navigator.pop(context);
                             if (screenTime > 6) {
@@ -295,8 +299,10 @@ class _HabitGardenScreenState extends State<HabitGardenScreen> {
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          disabledBackgroundColor: Colors.grey[300],
+                          disabledForegroundColor: Colors.grey[600],
                         ),
-                        child: Text('Save Health Log', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: Text(currentLog != null ? 'Already Logged Today' : 'Save Health Log', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

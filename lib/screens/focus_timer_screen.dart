@@ -58,34 +58,9 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
     // Initialize durations
     _totalSessionDuration = ((_selectedFocusMinutes + _selectedBreakMinutes) * 60).toInt();
     _secondsRemaining = _totalSessionDuration;
-    _checkScreenTimeAutostart();
   }
 
-  /// Only auto-start when user-inputted screen time >= 2 hours
-  Future<void> _checkScreenTimeAutostart() async {
-    if (_hasAutoStarted || _isRunning) return;
 
-    try {
-      final screenTime = await _firestoreService.getTodayScreenTime();
-      if (screenTime >= 2.0 && mounted && !_hasAutoStarted) {
-        setState(() => _hasAutoStarted = true);
-        _startTimer();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Screen time is ${screenTime.toStringAsFixed(1)}h — auto-starting a focus session! 📱➡️🎯',
-              style: GoogleFonts.outfit(color: Colors.white),
-            ),
-            backgroundColor: Colors.deepPurple,
-            duration: const Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Screen time check error: $e');
-    }
-  }
 
   void _startTimer() {
     if (_timer != null) return;
@@ -449,7 +424,7 @@ class _FocusTimerScreenState extends State<FocusTimerScreen> with TickerProvider
                       icon: Icons.stop_rounded,
                       color: Colors.redAccent,
                       onPressed: () {
-                        if (_mode == TimerMode.focus && _actualSecondsSpent > 60) {
+                        if (_mode == TimerMode.focus && _actualSecondsSpent >= 5) {
                           _saveSession();
                         }
                         _resetTimer();

@@ -240,7 +240,7 @@ class _CalendarWidget extends StatelessWidget {
             ),
             calendarBuilders: CalendarBuilders(
               markerBuilder: (context, day, events) {
-                if (events.isEmpty && !provider.hasHabitCompletion(day) && provider.getMoodForDay(day) == null) return null;
+                if (events.isEmpty && !provider.hasHabitCompletion(day)) return null;
                 
                 return Positioned(
                   bottom: 1,
@@ -253,8 +253,6 @@ class _CalendarWidget extends StatelessWidget {
                         _indicator(Colors.orange),
                       if (provider.hasHabitCompletion(day))
                          _indicator(Colors.green),
-                      if (provider.getMoodForDay(day) != null)
-                        Text(provider.getMoodForDay(day)!, style: const TextStyle(fontSize: 8)),
                     ],
                   ),
                 );
@@ -291,10 +289,9 @@ class _EventListWidget extends StatelessWidget {
     return Consumer<CalendarProvider>(
       builder: (context, provider, child) {
         final activities = provider.getActivitiesForDay(provider.selectedDay);
-        final mood = provider.getMoodForDay(provider.selectedDay);
         final hasHabit = provider.hasHabitCompletion(provider.selectedDay);
 
-        if (activities.isEmpty && mood == null && !hasHabit) {
+        if (activities.isEmpty && !hasHabit) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -314,14 +311,12 @@ class _EventListWidget extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
-            if (mood != null || hasHabit) 
+             if (hasHabit) 
                Padding(
                  padding: const EdgeInsets.only(bottom: 16),
                  child: Row(
                    children: [
-                     if (mood != null) _summaryChip("Mood: $mood", Colors.amber),
-                     if (mood != null && hasHabit) const SizedBox(width: 8),
-                     if (hasHabit) _summaryChip("Habits Completed", Colors.green),
+                     _summaryChip("Habits Completed", Colors.green),
                    ],
                  ),
                ),

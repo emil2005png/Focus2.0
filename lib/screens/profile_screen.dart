@@ -211,8 +211,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       radius: 60,
                                       backgroundColor: Colors.grey[200],
                                       backgroundImage:
-                                          _photoUrl != null ? NetworkImage(_photoUrl!) : null,
-                                      child: _photoUrl == null
+                                          _photoUrl != null && _photoUrl!.isNotEmpty
+                                            ? (_photoUrl!.startsWith('http') 
+                                                ? NetworkImage(_photoUrl!) as ImageProvider
+                                                : FileImage(File(_photoUrl!)))
+                                            : null,
+                                      child: _photoUrl == null || _photoUrl!.isEmpty
                                           ? Icon(Icons.person, size: 56, color: Colors.grey[400])
                                           : null,
                                     ),
@@ -610,7 +614,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 DropdownButtonFormField<String>(
-                  value: _genderController.text.isNotEmpty &&
+                  initialValue: _genderController.text.isNotEmpty &&
                           ['Male', 'Female', 'Other'].contains(_genderController.text)
                       ? _genderController.text
                       : null,

@@ -23,12 +23,21 @@ class AdviceService {
       );
     }
 
-    // 2. High Distraction Time
+    // 2. Very High Distraction Time ( > 2 hours )
+    if (totalDistractionMinutes > 120) {
+       return AdviceItem(
+        message: "You've been distracted for over 2 hours! Let's regain control by starting a Focus Session on a specific task.",
+        actionLabel: "Focus Mode",
+        actionType: AdviceActionType.timer,
+      );
+    }
+
+    // 3. High Distraction Time ( > 1 hour )
     if (totalDistractionMinutes > 60) {
        return AdviceItem(
         message: "You've been distracted for over an hour. Consider a short walk to clear your head.",
         actionLabel: "Start Timer",
-        actionType: AdviceActionType.timer, // Maybe lead to break timer? For now just timer
+        actionType: AdviceActionType.timer,
       );
     }
 

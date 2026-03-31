@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  static const String _apiKey = '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';
+  static const String _apiKey = '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';
   static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   static const String _modelName = 'google/gemini-2.0-flash-001';
 

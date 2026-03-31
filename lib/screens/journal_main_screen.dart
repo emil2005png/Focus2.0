@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:provider/provider.dart';
 
+import 'package:focus_app/providers/calendar_provider.dart';
 import 'package:focus_app/screens/journal_entry_screen.dart';
 import 'package:focus_app/screens/journal_list_screen.dart';
 import 'package:focus_app/screens/reflection_screen.dart';
@@ -50,31 +52,48 @@ class _JournalMainScreenState extends State<JournalMainScreen> {
                     color: Colors.white,
                     opacity: 1.0,
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    child: TableCalendar(
-                      firstDay: DateTime.utc(2020, 10, 16),
-                      lastDay: DateTime.utc(2030, 3, 14),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) {
-                        return isSameDay(_selectedDay, day);
-                      },
-                      onDaySelected: (selectedDay, focusedDay) {
-                        if (!isSameDay(_selectedDay, selectedDay)) {
-                          setState(() {
-                            _selectedDay = selectedDay;
-                            _focusedDay = focusedDay;
-                          });
-                        }
-                      },
-                      calendarStyle: CalendarStyle(
-                        selectedDecoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        todayDecoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                    child: Consumer<CalendarProvider>(
+                      builder: (context, provider, _) {
+                        return TableCalendar(
+                          firstDay: DateTime.utc(2020, 10, 16),
+                          lastDay: DateTime.utc(2030, 3, 14),
+                          focusedDay: _focusedDay,
+                          selectedDayPredicate: (day) {
+                            return isSameDay(_selectedDay, day);
+                          },
+                          onDaySelected: (selectedDay, focusedDay) {
+                            if (!isSameDay(_selectedDay, selectedDay)) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
+                            }
+                          },
+                          headerStyle: const HeaderStyle(
+                            formatButtonVisible: false,
+                          ),
+                          calendarStyle: CalendarStyle(
+                            selectedDecoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            todayDecoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          calendarBuilders: CalendarBuilders(
+                            markerBuilder: (context, day, events) {
+                              final mood = provider.getMoodForDay(day);
+                              if (mood == null) return null;
+                              return Positioned(
+                                bottom: 1,
+                                child: Text(mood, style: const TextStyle(fontSize: 10)),
+                              );
+                            },
+                          ),
+                        );
+                      }
                     ),
                   ),
                   const SizedBox(height: 24),

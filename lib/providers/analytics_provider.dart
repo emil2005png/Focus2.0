@@ -21,35 +21,76 @@ class AnalyticsProvider with ChangeNotifier {
   List<DailyHealthLog> get weeklyHealthLogs => _weeklyHealthLogs;
   List<Habit> get weeklyHabits => _weeklyHabits;
 
+  List<String> getDayLabels() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    List<String> labels = [];
+    for (int i = 0; i < 7; i++) {
+       final d = today.subtract(Duration(days: 6 - i));
+       labels.add(DateFormat('E').format(d));
+    }
+    return labels;
+  }
+
   Future<void> loadWeeklyData() async {
     _isLoading = true;
     notifyListeners();
 
     final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6, hours: 23, minutes: 59));
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
+    final endOfRange = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
     try {
-      _weeklyFocusSessions = await _firestoreService.getFocusSessionsForRange(startOfWeek, endOfWeek);
-      _weeklyMoods = await _firestoreService.getMoodsForRange(startOfWeek, endOfWeek);
-      _weeklyHealthLogs = await _firestoreService.getHealthLogsForRange(startOfWeek, endOfWeek);
+      _weeklyFocusSessions = await _firestoreService.getFocusSessionsForRange(startOfRange, endOfRange);
+    } catch (e) {
+      debugPrint('Error loading focus sessions: $e');
+      _weeklyFocusSessions = [];
+    }
+
+    try {
+      _weeklyMoods = await _firestoreService.getMoodsForRange(startOfRange, endOfRange);
+    } catch (e) {
+      debugPrint('Error loading moods: $e');
+      _weeklyMoods = [];
+    }
+
+    try {
+      _weeklyHealthLogs = await _firestoreService.getHealthLogsForRange(startOfRange, endOfRange);
+    } catch (e) {
+      debugPrint('Error loading health logs: $e');
+      _weeklyHealthLogs = [];
+    }
       
-      // Load current habits snapshot
+    try {
       final habitsSnapshot = await _firestoreService.getHabits().first;
       _weeklyHabits = habitsSnapshot;
     } catch (e) {
-      debugPrint('Error loading analytics data: $e');
+      debugPrint('Error loading habits: $e');
+      _weeklyHabits = [];
     }
 
     _isLoading = false;
     notifyListeners();
   }
 
+  double _getSessionMinutes(Map<String, dynamic> session) {
+    if (session.containsKey('durationMinutes')) {
+      return (session['durationMinutes'] as num? ?? 0).toDouble();
+    }
+    if (session.containsKey('actualFocusDurationSeconds')) {
+      int secs = (session['actualFocusDurationSeconds'] as num?)?.toInt() ?? 0;
+      return secs / 60.0;
+    }
+    return 0.0;
+  }
+
   // --- Computed Insight Values ---
 
   /// Returns "Improving", "Declining", or "Stable" based on mood trend
   String getMoodTrend() {
-    if (_weeklyMoods.length < 2) return 'No data';
+    if (_weeklyMoods.isEmpty) return 'Stable →';
+    if (_weeklyMoods.length == 1) return 'Stable →';
     
     final Map<String, double> moodValues = {
       'Happy': 5.0, 'Excited': 5.0, 'Calm': 4.0,
@@ -83,26 +124,24 @@ class AnalyticsProvider with ChangeNotifier {
 
   /// Returns habit completion percentage string
   String getHabitConsistency() {
-    if (_weeklyHabits.isEmpty) return 'No habits';
+    if (_weeklyHabits.isEmpty) return '0%';
     
     int totalCompleted = 0;
     int totalPossible = 0;
     
     final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
     
     for (var habit in _weeklyHabits) {
       // Count how many days this week each habit was completed
       for (var date in habit.completedDates) {
         final d = DateTime(date.year, date.month, date.day);
-        final s = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-        if (!d.isBefore(s)) {
+        if (!d.isBefore(startOfRange) && !d.isAfter(today)) {
           totalCompleted++;
         }
       }
-      // Each habit could be completed each day of the week so far
-      int daysSoFar = now.weekday; // Mon=1, Sun=7
-      totalPossible += daysSoFar;
+      totalPossible += 7;
     }
     
     if (totalPossible == 0) return '0%';
@@ -112,9 +151,9 @@ class AnalyticsProvider with ChangeNotifier {
 
   /// Returns the day of the week with the most focus minutes
   String getBestFocusDay() {
-    if (_weeklyFocusSessions.isEmpty) return 'No data';
+    if (_weeklyFocusSessions.isEmpty) return 'None';
     
-    Map<String, int> dayMinutes = {};
+    Map<String, double> dayMinutes = {};
     
     for (var session in _weeklyFocusSessions) {
       DateTime date;
@@ -127,11 +166,11 @@ class AnalyticsProvider with ChangeNotifier {
       }
       
       String dayName = DateFormat('EEEE').format(date);
-      int mins = session['durationMinutes'] as int? ?? 0;
-      dayMinutes[dayName] = (dayMinutes[dayName] ?? 0) + mins;
+      double mins = _getSessionMinutes(session);
+      dayMinutes[dayName] = (dayMinutes[dayName] ?? 0.0) + mins;
     }
     
-    if (dayMinutes.isEmpty) return 'No data';
+    if (dayMinutes.isEmpty) return 'None';
     
     var best = dayMinutes.entries.reduce((a, b) => a.value > b.value ? a : b);
     return best.key;
@@ -139,7 +178,7 @@ class AnalyticsProvider with ChangeNotifier {
 
   /// Returns screen usage change compared to previous data
   String getScreenUsageChange() {
-    if (_weeklyHealthLogs.isEmpty) return 'No data';
+    if (_weeklyHealthLogs.isEmpty) return '0.0h avg';
     
     double totalScreenTime = _weeklyHealthLogs.fold(0.0, (acc, log) => acc + log.screenTimeHours);
     double avgScreenTime = totalScreenTime / _weeklyHealthLogs.length;
@@ -152,8 +191,8 @@ class AnalyticsProvider with ChangeNotifier {
   /// Focus minutes per day of the week (Mon=0 to Sun=6)
   List<double> getFocusMinutesPerDay() {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
     
     List<double> dailyMinutes = List.filled(7, 0.0);
     
@@ -167,9 +206,10 @@ class AnalyticsProvider with ChangeNotifier {
         continue;
       }
       
-      int dayIndex = date.difference(startOfWeek).inDays;
+      final d = DateTime(date.year, date.month, date.day);
+      int dayIndex = d.difference(startOfRange).inDays;
       if (dayIndex >= 0 && dayIndex < 7) {
-        int mins = session['durationMinutes'] as int? ?? 0;
+        double mins = _getSessionMinutes(session);
         dailyMinutes[dayIndex] += mins;
       }
     }
@@ -180,8 +220,8 @@ class AnalyticsProvider with ChangeNotifier {
   /// Mood values per day of the week
   List<double?> getMoodValuesPerDay() {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
     
     final Map<String, double> moodValues = {
       'Happy': 5.0, 'Excited': 5.0, 'Calm': 4.0,
@@ -200,7 +240,8 @@ class AnalyticsProvider with ChangeNotifier {
         continue;
       }
       
-      int dayIndex = date.difference(startOfWeek).inDays;
+      final d = DateTime(date.year, date.month, date.day);
+      int dayIndex = d.difference(startOfRange).inDays;
       if (dayIndex >= 0 && dayIndex < 7) {
         String moodName = mood['moodName'] ?? mood['mood'] ?? '';
         dailyMoods[dayIndex] = moodValues[moodName] ?? 3.0;
@@ -213,13 +254,14 @@ class AnalyticsProvider with ChangeNotifier {
   /// Screen time per day of the week (includes zero-value days)
   List<double> getScreenTimePerDay() {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
     
     List<double> dailyScreenTime = List.filled(7, 0.0);
     
     for (var log in _weeklyHealthLogs) {
-      int dayIndex = log.date.difference(startOfWeek).inDays;
+      final d = DateTime(log.date.year, log.date.month, log.date.day);
+      int dayIndex = d.difference(startOfRange).inDays;
       if (dayIndex >= 0 && dayIndex < 7) {
         dailyScreenTime[dayIndex] = log.screenTimeHours;
       }
@@ -231,16 +273,15 @@ class AnalyticsProvider with ChangeNotifier {
   /// Habit completions per day of the week (Mon=0 to Sun=6)
   List<double> getHabitCompletionsPerDay() {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfRange = today.subtract(const Duration(days: 6));
     
     List<double> dailyCompletions = List.filled(7, 0.0);
     
     for (var habit in _weeklyHabits) {
       for (var date in habit.completedDates) {
         final d = DateTime(date.year, date.month, date.day);
-        final s = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-        int dayIndex = d.difference(s).inDays;
+        int dayIndex = d.difference(startOfRange).inDays;
         if (dayIndex >= 0 && dayIndex < 7) {
           dailyCompletions[dayIndex] += 1;
         }
@@ -252,7 +293,10 @@ class AnalyticsProvider with ChangeNotifier {
   String getWeeklySummary() {
     if (_isLoading) return "Generating summary...";
     
-    int totalFocusMins = _weeklyFocusSessions.fold(0, (acc, item) => acc + (item['durationMinutes'] as int? ?? 0));
+    double totalFocusMins = 0;
+    for (var s in _weeklyFocusSessions) {
+      totalFocusMins += _getSessionMinutes(s);
+    }
     double avgSleep = _weeklyHealthLogs.isEmpty ? 0 : _weeklyHealthLogs.fold(0.0, (acc, item) => acc + item.sleepHours) / _weeklyHealthLogs.length;
     double avgScreenTime = _weeklyHealthLogs.isEmpty ? 0 : _weeklyHealthLogs.fold(0.0, (acc, item) => acc + item.screenTimeHours) / _weeklyHealthLogs.length;
     
@@ -266,7 +310,7 @@ class AnalyticsProvider with ChangeNotifier {
       predominantMood = moodCounts.entries.reduce((a, b) => a.value > b.value ? a : b).key;
     }
 
-    return "This week, you focused for a total of $totalFocusMins minutes. "
+    return "This week, you focused for a total of ${totalFocusMins.toStringAsFixed(1)} minutes. "
            "Your average sleep was ${avgSleep.toStringAsFixed(1)} hours, and predominant mood was $predominantMood. "
            "Weekly screen time averaged ${avgScreenTime.toStringAsFixed(1)} hours. "
            "${totalFocusMins > 300 ? 'Excellent productivity!' : 'Try to set more focus goals next week.'}";
